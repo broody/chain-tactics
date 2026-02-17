@@ -14,7 +14,7 @@ PLAN (5s)  →  COMMIT (5s)  →  REVEAL + RESOLVE (5s)
    └──────────────────────────────────────┘
 ```
 
-Each round takes ~15 seconds. A typical game lasts 10-20 rounds (2.5-5 minutes).
+Round timing depends on game mode. A typical game lasts 10-20 rounds.
 
 1. **Plan** — Both players see the board and queue orders for their units
 2. **Commit** — Both submit `hash(orders + salt)` on-chain
@@ -122,11 +122,22 @@ The game ends when:
 2. **Elimination** — All enemy units are destroyed and they cannot produce more (no factories + no gold). Destroyer wins.
 3. **Timeout** — After 30 rounds, the player with more total unit HP + gold wins. Tie = draw.
 
+## Game Modes & Timing
+
+| Mode | Plan Phase | Commit Phase | Reveal + Resolve | Notes |
+|------|-----------|-------------|------------------|-------|
+| **PvP** | Configurable (10s / 15s / 30s) | 5s | 5s | Set by lobby host |
+| **vs AI** | Unlimited | Instant | Instant | No timer — player submits when ready |
+
+In PvP, the plan phase timer is a lobby setting to accommodate different play styles (casual vs competitive). In player vs AI, there is no time pressure — the agent commits immediately after the player.
+
 ## Commit-Reveal
 
 ### Why
 
 On-chain state is public. Without commit-reveal, the second player to submit always sees the first player's orders and can counter perfectly. Commit-reveal ensures both players are blind.
+
+Attacks target **coordinates, not units**. If the target moved away during simultaneous resolution, the attack misses. This is by design — the core skill is predicting your opponent's moves, not reacting to them.
 
 ### Flow
 
