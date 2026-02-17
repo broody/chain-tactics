@@ -1,8 +1,8 @@
-# Chain Tactics — Product Requirements Document
+# Onchain Tactics — Product Requirements Document
 
 ## Overview
 
-Chain Tactics is a simultaneous-turn tactics game on StarkNet. Two players command small armies on a grid, submitting orders blind via commit-reveal. Orders resolve simultaneously each round — the core gameplay is predicting your opponent's moves, not reacting to them.
+Onchain Tactics is a simultaneous-turn tactics game on StarkNet. Two players command small armies on a grid, submitting orders blind via commit-reveal. Orders resolve simultaneously each round — the core gameplay is predicting your opponent's moves, not reacting to them.
 
 Built on Dojo with a React + PixiJS client. An AI agent can play either side using the same transaction API as a human.
 
