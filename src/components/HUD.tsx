@@ -17,7 +17,7 @@ const HUD = () => (
     }}
   >
     <span style={{ fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>
-      ONCHAIN TACTICS
+      CHAIN TACTICS
     </span>
   </div>
 );
