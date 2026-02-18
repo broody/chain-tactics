@@ -1,0 +1,21 @@
+[package]
+cairo-version = "2.13.1"
+name = "chain_tactics"
+version = "1.0.0"
+edition = "2024_07"
+
+[[target.starknet-contract]]
+sierra = true
+build-external-contracts = ["dojo::world::world_contract::world"]
+
+[dependencies]
+starknet = "2.13.1"
+dojo = "1.8.0"
+dojo_cairo_macros = "1.8.0"
+
+[dev-dependencies]
+cairo_test = "2.13.1"
+dojo_cairo_test = "1.8.0"
+
+[tool.scarb]
+allow-prebuilt-plugins = ["dojo_cairo_macros"]
