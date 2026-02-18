@@ -268,8 +268,18 @@ export default function GameViewport() {
 
     // --- Spawn test units ---
     const unitTypes = [
-      "civilian", "rifle", "rpg", "mg", "sidecar", "bulldozer",
-      "transporter", "buggy", "jeep", "artillery", "tank", "heavy_tank",
+      "civilian",
+      "rifle",
+      "rpg",
+      "mg",
+      "sidecar",
+      "bulldozer",
+      "transporter",
+      "buggy",
+      "jeep",
+      "artillery",
+      "tank",
+      "heavy_tank",
     ];
     const teams: Unit["team"][] = ["blue", "red", "green", "yellow"];
     for (let i = 0; i < unitTypes.length; i++) {
@@ -315,7 +325,12 @@ export default function GameViewport() {
       return anim;
     }
 
-    function setUnitAnim(unit: Unit, sprite: AnimatedSprite, anim: Unit["animation"], facing?: Unit["facing"]) {
+    function setUnitAnim(
+      unit: Unit,
+      sprite: AnimatedSprite,
+      anim: Unit["animation"],
+      facing?: Unit["facing"],
+    ) {
       const newKey = `${unit.type}_${anim}`;
       const sheet = unitSheets[unit.team];
       const frames = sheet.animations[newKey];
@@ -338,15 +353,61 @@ export default function GameViewport() {
     let selectedUnit: Unit | null = null;
     const selectGfx = new Graphics();
     vp.addChild(selectGfx);
+    let selectPulse = 0;
 
     function drawSelection() {
       selectGfx.clear();
       if (!selectedUnit) return;
       const sprite = unitSprites.get(selectedUnit.id);
       if (!sprite) return;
+
+      const pulse = 1 + Math.sin(selectPulse) * 0.12;
+      const pad = 3; // pixels outside the tile
+      const half = (TILE_PX / 2 + pad) * pulse;
+      const cx = sprite.x;
+      const cy = sprite.y;
+      const len = 6 * pulse; // corner arm length
+      const teamColors: Record<string, number> = {
+        blue: 0x4a9eff,
+        red: 0xff4a4a,
+        green: 0x4aff4a,
+        yellow: 0xffdd4a,
+      };
+      const color = teamColors[selectedUnit.team] ?? 0xff8c00;
+      const width = 2;
+
+      // Top-left corner
       selectGfx
-        .rect(sprite.x - TILE_PX / 2, sprite.y - TILE_PX / 2, TILE_PX, TILE_PX)
-        .stroke({ color: 0x00ff00, width: 2 });
+        .moveTo(cx - half + len, cy - half)
+        .lineTo(cx - half, cy - half)
+        .lineTo(cx - half, cy - half + len);
+      // Top-right corner
+      selectGfx
+        .moveTo(cx + half - len, cy - half)
+        .lineTo(cx + half, cy - half)
+        .lineTo(cx + half, cy - half + len);
+      // Bottom-left corner
+      selectGfx
+        .moveTo(cx - half, cy + half - len)
+        .lineTo(cx - half, cy + half)
+        .lineTo(cx - half + len, cy + half);
+      // Bottom-right corner
+      selectGfx
+        .moveTo(cx + half, cy + half - len)
+        .lineTo(cx + half, cy + half)
+        .lineTo(cx + half - len, cy + half);
+
+      selectGfx.stroke({ color, width });
+    }
+
+    // --- Blocked tiles from unit positions ---
+    function getBlockedTiles(excludeId: number): Set<number> {
+      const blocked = new Set<number>();
+      for (const u of units) {
+        if (u.id === excludeId) continue;
+        blocked.add(u.y * GRID_SIZE + u.x);
+      }
+      return blocked;
     }
 
     // --- Movement state (per-unit) ---
@@ -360,11 +421,39 @@ export default function GameViewport() {
     }
     const activeMovements = new Map<number, MoveState>();
 
-    // --- Hover highlight ---
+    // --- Hover highlight + path preview ---
     const hoverGfx = new Graphics();
+    const pathGfx = new Graphics();
+    vp.addChild(pathGfx);
     vp.addChild(hoverGfx);
 
     const canvas = app.canvas as HTMLCanvasElement;
+    let lastPathGridX = -1;
+    let lastPathGridY = -1;
+
+    function drawPathPreview(gridX: number, gridY: number) {
+      pathGfx.clear();
+      if (!selectedUnit || activeMovements.has(selectedUnit.id)) return;
+      if (gridX === selectedUnit.x && gridY === selectedUnit.y) return;
+
+      const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
+      const path = findPath(
+        tileMap,
+        selectedUnit.x,
+        selectedUnit.y,
+        gridX,
+        gridY,
+        range,
+        getBlockedTiles(selectedUnit.id),
+      );
+      if (path.length === 0) return;
+
+      for (const step of path) {
+        pathGfx
+          .rect(step.x * TILE_PX, step.y * TILE_PX, TILE_PX, TILE_PX)
+          .fill({ color: 0xffffff, alpha: 0.2 });
+      }
+    }
 
     function onPointerMove(ev: PointerEvent) {
       const rect = canvas.getBoundingClientRect();
@@ -379,6 +468,13 @@ export default function GameViewport() {
         hoverGfx
           .rect(gridX * TILE_PX, gridY * TILE_PX, TILE_PX, TILE_PX)
           .fill({ color: 0xffffff, alpha: 0.2 });
+
+        // Update path preview only when grid cell changes
+        if (gridX !== lastPathGridX || gridY !== lastPathGridY) {
+          lastPathGridX = gridX;
+          lastPathGridY = gridY;
+          drawPathPreview(gridX, gridY);
+        }
       }
     }
 
@@ -393,14 +489,18 @@ export default function GameViewport() {
     function onVpClicked(e: { world: { x: number; y: number } }) {
       const gridX = Math.floor(e.world.x / TILE_PX);
       const gridY = Math.floor(e.world.y / TILE_PX);
-      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE) return;
+      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE)
+        return;
 
-      // Find unit at clicked tile
+      // Find unit at clicked tile — click empty space to deselect
       const clicked = units.find(
         (u) => u.x === gridX && u.y === gridY && !activeMovements.has(u.id),
       );
       selectedUnit = clicked ?? null;
       drawSelection();
+      pathGfx.clear();
+      lastPathGridX = -1;
+      lastPathGridY = -1;
     }
     vp.on("clicked", onVpClicked);
 
@@ -413,7 +513,15 @@ export default function GameViewport() {
       if (activeMovements.has(unit.id)) return; // already moving
 
       const range = UNIT_MOVE_RANGE[unit.type] ?? 5;
-      const path = findPath(tileMap, unit.x, unit.y, gridX, gridY, range);
+      const path = findPath(
+        tileMap,
+        unit.x,
+        unit.y,
+        gridX,
+        gridY,
+        range,
+        getBlockedTiles(unit.id),
+      );
       if (path.length === 0) return;
 
       const ms: MoveState = {
@@ -450,9 +558,11 @@ export default function GameViewport() {
       const gridX = Math.floor(worldPos.x / TILE_PX);
       const gridY = Math.floor(worldPos.y / TILE_PX);
 
-      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE) return;
+      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE)
+        return;
 
       startMovement(selectedUnit, gridX, gridY);
+      pathGfx.clear();
     }
 
     canvas.addEventListener("contextmenu", onContextMenu);
@@ -495,7 +605,12 @@ export default function GameViewport() {
           } else if (dy < 0) {
             setUnitAnim(ms.unit, sprite, "walk_up");
           } else {
-            setUnitAnim(ms.unit, sprite, "walk_side", dx < 0 ? "left" : "right");
+            setUnitAnim(
+              ms.unit,
+              sprite,
+              "walk_side",
+              dx < 0 ? "left" : "right",
+            );
           }
         }
 
@@ -507,7 +622,8 @@ export default function GameViewport() {
         sprite.y = ly * TILE_PX + TILE_PX / 2;
       }
 
-      // Update selection highlight to follow moving unit
+      // Update selection highlight with pulse
+      selectPulse += ticker.deltaTime * 0.15;
       drawSelection();
     };
 

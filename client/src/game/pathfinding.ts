@@ -43,6 +43,7 @@ export function findPath(
   toX: number,
   toY: number,
   maxSteps: number,
+  blocked?: Set<number>,
 ): { x: number; y: number }[] {
   if (fromX === toX && fromY === toY) return [];
 
@@ -50,6 +51,7 @@ export function findPath(
   if (toX < 0 || toX >= GRID_SIZE || toY < 0 || toY >= GRID_SIZE) return [];
   const destCost = TILE_COST[tileMap[toY * GRID_SIZE + toX] as TileType];
   if (destCost < 0) return [];
+  if (blocked?.has(toY * GRID_SIZE + toX)) return [];
 
   const open: Node[] = [];
   const closed = new Set<number>();
@@ -103,6 +105,7 @@ export function findPath(
 
       const tileCost = TILE_COST[tileMap[ny * GRID_SIZE + nx] as TileType];
       if (tileCost < 0) continue; // impassable
+      if (blocked?.has(nk)) continue; // occupied by unit
 
       const ng = current.g + tileCost;
       if (ng > maxSteps) continue; // exceeds movement budget
