@@ -167,12 +167,17 @@ Agents combine multiple traits. A "gullible + aggressive" agent might believe a 
 
 ## AI Agent
 
-An AI agent plays the game using the same API as a human:
+AI agents are real on-chain players. They use **controller-cli** to submit transactions through Cartridge Controller sessions — the same interface as human players. No backdoors, no separate API.
 
-1. Poll Torii indexer for current board state
-2. Observe opponent's last moves and current board position
-3. Evaluate threats, prioritize targets, plan multi-turn strategy
-4. Execute moves: select unit → move → attack → next unit → end turn
+### Agent Lifecycle
+
+1. **Spawn** — Game server creates agent with personality traits + strategy tier
+2. **Auth** — `controller session auth --preset chain-tactics --chain-id <chain>` to establish a scoped session
+3. **Observe** — `controller call <world> get_board_state <game_id>` via RPC to read current state
+4. **Decide** — LLM evaluates board, chat context, personality → plans moves
+5. **Execute** — `controller execute <world> submit_orders <calldata>` to submit moves on-chain
+6. **Chat** — Respond to player messages with personality-consistent dialogue
+7. **Cleanup** — Game resolves → `controller session clear` → agent discarded
 
 The agent sees the same information as a human player and takes its turn just like a human would — one unit at a time.
 
@@ -188,7 +193,7 @@ The agent sees the same information as a human player and takes its turn just li
 - **Framework**: Dojo (models for units, buildings, game state)
 - **Indexer**: Torii (gRPC subscriptions for real-time state)
 - **Client**: React + PixiJS + Vite
-- **Agent**: TypeScript/Python, Torii polling + direct RPC
+- **Agent**: TypeScript, controller-cli for on-chain txs, OpenRouter for LLM
 
 ## MVP Scope (Prototype)
 
