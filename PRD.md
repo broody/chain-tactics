@@ -172,7 +172,7 @@ AI agents are real on-chain players. They use **controller-cli** to submit trans
 ### Agent Lifecycle
 
 1. **Spawn** — Game server creates agent with personality traits + strategy tier
-2. **Auth** — `controller session auth --preset chain-tactics --chain-id <chain>` to establish a scoped session
+2. **Auth** — Agents use pre-authorized credentials (preset session keys) so they can play instantly with no browser auth flow. The game server holds a pool of pre-provisioned Controller sessions scoped to the game contract.
 3. **Observe** — `controller call <world> get_board_state <game_id>` via RPC to read current state
 4. **Decide** — LLM evaluates board, chat context, personality → plans moves
 5. **Execute** — `controller execute <world> submit_orders <calldata>` to submit moves on-chain
