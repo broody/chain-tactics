@@ -10,6 +10,7 @@ import {
 } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import { tileMap, units, addUnit } from "../data/gameStore";
+import type { Unit } from "../data/gameStore";
 import { GRID_SIZE, TILE_PX, TILE_COLORS, TileType } from "../game/types";
 import { terrainAtlas } from "../game/spritesheets/terrain";
 import {
@@ -18,6 +19,7 @@ import {
   unitAtlasGreen,
   unitAtlasYellow,
 } from "../game/spritesheets/units";
+import { findPath } from "../game/pathfinding";
 
 const WORLD_SIZE = GRID_SIZE * TILE_PX;
 
@@ -155,6 +157,18 @@ export default function GameViewport() {
       vp.addChild(sprite);
     }
 
+    function addTileAnim(animName: string, x: number, y: number) {
+      const frames = terrainSheet.animations[animName];
+      const anim = new AnimatedSprite(frames);
+      anim.animationSpeed = 0.05;
+      anim.play();
+      anim.x = x * TILE_PX;
+      anim.y = y * TILE_PX;
+      anim.width = TILE_PX;
+      anim.height = TILE_PX;
+      vp.addChild(anim);
+    }
+
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
         const tile = tileMap[y * GRID_SIZE + x] as TileType;
@@ -181,12 +195,39 @@ export default function GameViewport() {
             x,
             y,
           );
+        } else if (tile === TileType.Factory) {
+          addTileSprite(pickGrass(x, y), x, y);
+          addTileAnim("factory_producing", x, y);
+        } else if (tile === TileType.HQ) {
+          addTileSprite(pickGrass(x, y), x, y);
+          addTileSprite("hq_bottom", x, y);
+          addTileSprite(pickGrass(x, y - 1), x, y - 1);
+          addTileSprite("hq_top", x, y - 1);
         } else {
           const color = TILE_COLORS[tile];
           gridGfx.rect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX).fill(color);
         }
       }
     }
+
+    // --- Test: render building variants (producing, idle, damaged) ---
+    // Row 1: factory
+    addTileSprite(pickGrass(19, 1), 19, 1);
+    addTileSprite("factory_idle", 19, 1);
+    addTileSprite(pickGrass(20, 1), 20, 1);
+    addTileSprite("factory_damaged", 20, 1);
+    // Row 2: barracks
+    addTileSprite(pickGrass(18, 2), 18, 2);
+    addTileAnim("barracks_producing", 18, 2);
+    addTileSprite(pickGrass(19, 2), 19, 2);
+    addTileSprite("barracks_idle", 19, 2);
+    addTileSprite(pickGrass(20, 2), 20, 2);
+    addTileSprite("barracks_damaged", 20, 2);
+    // HQ: stacked vertically next to barracks
+    addTileSprite(pickGrass(21, 1), 21, 1);
+    addTileSprite("hq_top", 21, 1);
+    addTileSprite(pickGrass(21, 2), 21, 2);
+    addTileSprite("hq_bottom", 21, 2);
 
     // --- Load unit spritesheets ---
     const [blueTexture, redTexture, greenTexture, yellowTexture] =
@@ -225,67 +266,40 @@ export default function GameViewport() {
       yellow: yellowSheet,
     };
 
-    // --- Place test units ---
-    type UnitRow = { type: string; hasAttack: boolean };
-    const unitRows: UnitRow[] = [
-      { type: "civilian", hasAttack: false },
-      { type: "rifle", hasAttack: true },
-      { type: "rpg", hasAttack: true },
-      { type: "mg", hasAttack: true },
-      { type: "sidecar", hasAttack: true },
-      { type: "bulldozer", hasAttack: false },
-      { type: "transporter", hasAttack: false },
-      { type: "buggy", hasAttack: true },
-      { type: "jeep", hasAttack: true },
-      { type: "artillery", hasAttack: true },
-      { type: "tank", hasAttack: true },
-      { type: "heavy_tank", hasAttack: true },
+    // --- Spawn test units ---
+    const unitTypes = [
+      "civilian", "rifle", "rpg", "mg", "sidecar", "bulldozer",
+      "transporter", "buggy", "jeep", "artillery", "tank", "heavy_tank",
     ];
-
-    function placeTestRow(
-      team: "blue" | "red" | "green" | "yellow",
-      type: string,
-      hasAttack: boolean,
-      xOff: number,
-      y: number,
-    ) {
-      let x = xOff;
-      addUnit(type, team, x++, y);
-      const wr = addUnit(type, team, x++, y);
-      wr.animation = "walk_side";
-      const wl = addUnit(type, team, x++, y);
-      wl.animation = "walk_side";
-      wl.facing = "left";
-      const wd = addUnit(type, team, x++, y);
-      wd.animation = "walk_down";
-      const wu = addUnit(type, team, x++, y);
-      wu.animation = "walk_up";
-      if (hasAttack) {
-        const ar = addUnit(type, team, x++, y);
-        ar.animation = "attack";
-        const al = addUnit(type, team, x++, y);
-        al.animation = "attack";
-        al.facing = "left";
+    const teams: Unit["team"][] = ["blue", "red", "green", "yellow"];
+    for (let i = 0; i < unitTypes.length; i++) {
+      for (let t = 0; t < teams.length; t++) {
+        addUnit(unitTypes[i], teams[t], 1 + t * 10, 12 + i);
       }
-      const d = addUnit(type, team, x++, y);
-      d.animation = "death";
     }
 
-    unitRows.forEach((row, i) => {
-      placeTestRow("blue", row.type, row.hasAttack, 1, 12 + i);
-      placeTestRow("red", row.type, row.hasAttack, 11, 12 + i);
-      placeTestRow("green", row.type, row.hasAttack, 21, 12 + i);
-      placeTestRow("yellow", row.type, row.hasAttack, 31, 12 + i);
-    });
+    const UNIT_MOVE_RANGE: Record<string, number> = {
+      civilian: 5,
+      rifle: 5,
+      rpg: 4,
+      mg: 4,
+      sidecar: 6,
+      bulldozer: 4,
+      transporter: 6,
+      buggy: 7,
+      jeep: 7,
+      artillery: 3,
+      tank: 4,
+      heavy_tank: 3,
+    };
 
     // --- Render units ---
-    for (const unit of units) {
+    const unitSprites = new Map<number, AnimatedSprite>();
+
+    function createUnitSprite(unit: Unit): AnimatedSprite {
       const sheet = unitSheets[unit.team];
-      if (!sheet) continue;
       const animKey = `${unit.type}_${unit.animation}`;
       const frames = sheet.animations[animKey];
-      if (!frames) continue;
-
       const anim = new AnimatedSprite(frames);
       anim.animationSpeed = 0.1;
       anim.play();
@@ -298,7 +312,53 @@ export default function GameViewport() {
         anim.scale.x *= -1;
       }
       vp.addChild(anim);
+      return anim;
     }
+
+    function setUnitAnim(unit: Unit, sprite: AnimatedSprite, anim: Unit["animation"], facing?: Unit["facing"]) {
+      const newKey = `${unit.type}_${anim}`;
+      const sheet = unitSheets[unit.team];
+      const frames = sheet.animations[newKey];
+      if (!frames) return;
+      unit.animation = anim;
+      if (facing !== undefined) unit.facing = facing;
+      sprite.textures = frames;
+      sprite.play();
+      // Preserve size through texture swap
+      const absScaleX = Math.abs(sprite.scale.x);
+      sprite.scale.x = unit.facing === "left" ? -absScaleX : absScaleX;
+    }
+
+    for (const unit of units) {
+      const sprite = createUnitSprite(unit);
+      unitSprites.set(unit.id, sprite);
+    }
+
+    // --- Selection state ---
+    let selectedUnit: Unit | null = null;
+    const selectGfx = new Graphics();
+    vp.addChild(selectGfx);
+
+    function drawSelection() {
+      selectGfx.clear();
+      if (!selectedUnit) return;
+      const sprite = unitSprites.get(selectedUnit.id);
+      if (!sprite) return;
+      selectGfx
+        .rect(sprite.x - TILE_PX / 2, sprite.y - TILE_PX / 2, TILE_PX, TILE_PX)
+        .stroke({ color: 0x00ff00, width: 2 });
+    }
+
+    // --- Movement state (per-unit) ---
+    interface MoveState {
+      unit: Unit;
+      path: { x: number; y: number }[];
+      stepIndex: number;
+      progress: number;
+      startX: number;
+      startY: number;
+    }
+    const activeMovements = new Map<number, MoveState>();
 
     // --- Hover highlight ---
     const hoverGfx = new Graphics();
@@ -329,6 +389,130 @@ export default function GameViewport() {
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerleave", onPointerLeave);
 
+    // --- Left-click selection (via pixi-viewport 'clicked' to avoid drag conflicts) ---
+    function onVpClicked(e: { world: { x: number; y: number } }) {
+      const gridX = Math.floor(e.world.x / TILE_PX);
+      const gridY = Math.floor(e.world.y / TILE_PX);
+      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE) return;
+
+      // Find unit at clicked tile
+      const clicked = units.find(
+        (u) => u.x === gridX && u.y === gridY && !activeMovements.has(u.id),
+      );
+      selectedUnit = clicked ?? null;
+      drawSelection();
+    }
+    vp.on("clicked", onVpClicked);
+
+    // --- Right-click movement ---
+    function onContextMenu(ev: MouseEvent) {
+      ev.preventDefault();
+    }
+
+    function startMovement(unit: Unit, gridX: number, gridY: number) {
+      if (activeMovements.has(unit.id)) return; // already moving
+
+      const range = UNIT_MOVE_RANGE[unit.type] ?? 5;
+      const path = findPath(tileMap, unit.x, unit.y, gridX, gridY, range);
+      if (path.length === 0) return;
+
+      const ms: MoveState = {
+        unit,
+        path,
+        stepIndex: 0,
+        progress: 0,
+        startX: unit.x,
+        startY: unit.y,
+      };
+      activeMovements.set(unit.id, ms);
+
+      // Set initial walk animation
+      const sprite = unitSprites.get(unit.id)!;
+      const dx = path[0].x - unit.x;
+      const dy = path[0].y - unit.y;
+      if (dy > 0) {
+        setUnitAnim(unit, sprite, "walk_down");
+      } else if (dy < 0) {
+        setUnitAnim(unit, sprite, "walk_up");
+      } else {
+        setUnitAnim(unit, sprite, "walk_side", dx < 0 ? "left" : "right");
+      }
+    }
+
+    function onPointerDown(ev: PointerEvent) {
+      if (ev.button !== 2) return; // right-click only
+      if (!selectedUnit) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const screenX = ev.clientX - rect.left;
+      const screenY = ev.clientY - rect.top;
+      const worldPos = vp.toWorld(screenX, screenY);
+      const gridX = Math.floor(worldPos.x / TILE_PX);
+      const gridY = Math.floor(worldPos.y / TILE_PX);
+
+      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE) return;
+
+      startMovement(selectedUnit, gridX, gridY);
+    }
+
+    canvas.addEventListener("contextmenu", onContextMenu);
+    canvas.addEventListener("pointerdown", onPointerDown);
+
+    // --- Movement ticker ---
+    const MOVE_SPEED = 4; // tiles per second
+
+    const tickerCb = (ticker: { deltaTime: number }) => {
+      for (const [id, ms] of activeMovements) {
+        const sprite = unitSprites.get(id);
+        if (!sprite) continue;
+
+        ms.progress += (ticker.deltaTime * MOVE_SPEED) / 60;
+
+        if (ms.progress >= 1) {
+          const step = ms.path[ms.stepIndex];
+          ms.unit.x = step.x;
+          ms.unit.y = step.y;
+          ms.startX = step.x;
+          ms.startY = step.y;
+          ms.stepIndex++;
+          ms.progress = 0;
+
+          if (ms.stepIndex >= ms.path.length) {
+            sprite.x = ms.unit.x * TILE_PX + TILE_PX / 2;
+            sprite.y = ms.unit.y * TILE_PX + TILE_PX / 2;
+            setUnitAnim(ms.unit, sprite, "idle");
+            activeMovements.delete(id);
+            drawSelection();
+            continue;
+          }
+
+          // Update facing for next step
+          const next = ms.path[ms.stepIndex];
+          const dx = next.x - ms.unit.x;
+          const dy = next.y - ms.unit.y;
+          if (dy > 0) {
+            setUnitAnim(ms.unit, sprite, "walk_down");
+          } else if (dy < 0) {
+            setUnitAnim(ms.unit, sprite, "walk_up");
+          } else {
+            setUnitAnim(ms.unit, sprite, "walk_side", dx < 0 ? "left" : "right");
+          }
+        }
+
+        // Lerp position
+        const target = ms.path[ms.stepIndex];
+        const lx = ms.startX + (target.x - ms.startX) * ms.progress;
+        const ly = ms.startY + (target.y - ms.startY) * ms.progress;
+        sprite.x = lx * TILE_PX + TILE_PX / 2;
+        sprite.y = ly * TILE_PX + TILE_PX / 2;
+      }
+
+      // Update selection highlight to follow moving unit
+      drawSelection();
+    };
+
+    app.ticker.add(tickerCb);
+
     // --- Resize handling ---
     const ro = new ResizeObserver(() => {
       app.resize();
@@ -339,6 +523,10 @@ export default function GameViewport() {
     cleanupRef.current = () => {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
+      canvas.removeEventListener("contextmenu", onContextMenu);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      vp.off("clicked", onVpClicked);
+      app.ticker.remove(tickerCb);
       ro.disconnect();
     };
   }, []);

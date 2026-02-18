@@ -221,6 +221,40 @@ export const terrainAtlas = {
     dirtroad_bottom_right: {
       frame: { x: TILE * 9, y: TILE * 15, w: TILE, h: TILE },
     },
+    factory_idle: {
+      frame: { x: TILE, y: TILE * 14, w: TILE, h: TILE },
+    },
+    factory_producing_0: {
+      frame: { x: TILE, y: TILE * 14, w: TILE, h: TILE },
+    },
+    factory_producing_1: {
+      frame: { x: TILE * 2, y: TILE * 14, w: TILE, h: TILE },
+    },
+    factory_damaged: {
+      frame: { x: 0, y: TILE * 14, w: TILE, h: TILE },
+    },
+    barracks_idle: {
+      frame: { x: TILE, y: TILE * 13, w: TILE, h: TILE },
+    },
+    barracks_producing_0: {
+      frame: { x: TILE, y: TILE * 13, w: TILE, h: TILE },
+    },
+    barracks_producing_1: {
+      frame: { x: TILE * 2, y: TILE * 13, w: TILE, h: TILE },
+    },
+    barracks_damaged: {
+      frame: { x: 0, y: TILE * 13, w: TILE, h: TILE },
+    },
+    hq_top: {
+      frame: { x: TILE * 3, y: TILE * 13, w: TILE, h: TILE },
+    },
+    hq_bottom: {
+      frame: { x: TILE * 3, y: TILE * 14, w: TILE, h: TILE },
+    },
+  },
+  animations: {
+    factory_producing: ["factory_producing_0", "factory_producing_1"],
+    barracks_producing: ["barracks_producing_0", "barracks_producing_1"],
   },
   meta: {
     image: "/tilesets/terrain.png",
