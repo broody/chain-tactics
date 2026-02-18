@@ -1,9 +1,23 @@
 import { useEffect, useRef, useCallback } from "react";
-import { Application, Assets, Graphics, Sprite, Spritesheet, Texture } from "pixi.js";
+import {
+  AnimatedSprite,
+  Application,
+  Assets,
+  Graphics,
+  Sprite,
+  Spritesheet,
+  Texture,
+} from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { tileMap } from "../data/gameStore";
+import { tileMap, units, addUnit } from "../data/gameStore";
 import { GRID_SIZE, TILE_PX, TILE_COLORS, TileType } from "../game/types";
 import { terrainAtlas } from "../game/spritesheets/terrain";
+import {
+  unitAtlasBlue,
+  unitAtlasRed,
+  unitAtlasGreen,
+  unitAtlasYellow,
+} from "../game/spritesheets/units";
 
 const WORLD_SIZE = GRID_SIZE * TILE_PX;
 
@@ -40,13 +54,10 @@ export default function GameViewport() {
     });
     app.stage.addChild(vp as any);
 
-    vp.drag({ mouseButtons: "left" })
-      .pinch()
-      .wheel()
-      .clampZoom({
-        minScale: 0.5,
-        maxScale: 4,
-      });
+    vp.drag({ mouseButtons: "left" }).pinch().wheel().clampZoom({
+      minScale: 0.5,
+      maxScale: 4,
+    });
 
     // Center on the map
     vp.moveCenter(WORLD_SIZE / 2, WORLD_SIZE / 2);
@@ -93,7 +104,12 @@ export default function GameViewport() {
       return tileMap[y * GRID_SIZE + x] === type;
     }
 
-    function pickAutotile(x: number, y: number, type: TileType, prefix: string): string {
+    function pickAutotile(
+      x: number,
+      y: number,
+      type: TileType,
+      prefix: string,
+    ): string {
       const left = isTileType(x - 1, y, type);
       const right = isTileType(x + 1, y, type);
       const up = isTileType(x, y - 1, type);
@@ -147,7 +163,11 @@ export default function GameViewport() {
           addTileSprite(pickGrass(x, y), x, y);
         } else if (tile === TileType.Mountain) {
           addTileSprite(pickGrass(x, y), x, y);
-          addTileSprite(pickAutotile(x, y, TileType.Mountain, "mountain"), x, y);
+          addTileSprite(
+            pickAutotile(x, y, TileType.Mountain, "mountain"),
+            x,
+            y,
+          );
         } else if (tile === TileType.Tree) {
           addTileSprite(pickGrass(x, y), x, y);
           addTileSprite(pickAutotile(x, y, TileType.Tree, "tree"), x, y);
@@ -156,16 +176,129 @@ export default function GameViewport() {
           addTileSprite(pickAutotile(x, y, TileType.Road, "road"), x, y);
         } else if (tile === TileType.DirtRoad) {
           addTileSprite(pickGrass(x, y), x, y);
-          addTileSprite(pickAutotile(x, y, TileType.DirtRoad, "dirtroad"), x, y);
+          addTileSprite(
+            pickAutotile(x, y, TileType.DirtRoad, "dirtroad"),
+            x,
+            y,
+          );
         } else {
           const color = TILE_COLORS[tile];
-          gridGfx
-            .rect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX)
-            .fill(color);
+          gridGfx.rect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX).fill(color);
         }
       }
     }
 
+    // --- Load unit spritesheets ---
+    const [blueTexture, redTexture, greenTexture, yellowTexture] =
+      await Promise.all([
+        Assets.load({
+          src: "/tilesets/units_blue.png",
+          data: { scaleMode: "nearest" },
+        }),
+        Assets.load({
+          src: "/tilesets/units_red.png",
+          data: { scaleMode: "nearest" },
+        }),
+        Assets.load({
+          src: "/tilesets/units_green.png",
+          data: { scaleMode: "nearest" },
+        }),
+        Assets.load({
+          src: "/tilesets/units_yellow.png",
+          data: { scaleMode: "nearest" },
+        }),
+      ]);
+    const blueSheet = new Spritesheet(blueTexture, unitAtlasBlue);
+    const redSheet = new Spritesheet(redTexture, unitAtlasRed);
+    const greenSheet = new Spritesheet(greenTexture, unitAtlasGreen);
+    const yellowSheet = new Spritesheet(yellowTexture, unitAtlasYellow);
+    await Promise.all([
+      blueSheet.parse(),
+      redSheet.parse(),
+      greenSheet.parse(),
+      yellowSheet.parse(),
+    ]);
+    const unitSheets: Record<string, Spritesheet> = {
+      blue: blueSheet,
+      red: redSheet,
+      green: greenSheet,
+      yellow: yellowSheet,
+    };
+
+    // --- Place test units ---
+    type UnitRow = { type: string; hasAttack: boolean };
+    const unitRows: UnitRow[] = [
+      { type: "civilian", hasAttack: false },
+      { type: "rifle", hasAttack: true },
+      { type: "rpg", hasAttack: true },
+      { type: "mg", hasAttack: true },
+      { type: "sidecar", hasAttack: true },
+      { type: "bulldozer", hasAttack: false },
+      { type: "transporter", hasAttack: false },
+      { type: "buggy", hasAttack: true },
+      { type: "jeep", hasAttack: true },
+      { type: "artillery", hasAttack: true },
+      { type: "tank", hasAttack: true },
+      { type: "heavy_tank", hasAttack: true },
+    ];
+
+    function placeTestRow(
+      team: "blue" | "red" | "green" | "yellow",
+      type: string,
+      hasAttack: boolean,
+      xOff: number,
+      y: number,
+    ) {
+      let x = xOff;
+      addUnit(type, team, x++, y);
+      const wr = addUnit(type, team, x++, y);
+      wr.animation = "walk_side";
+      const wl = addUnit(type, team, x++, y);
+      wl.animation = "walk_side";
+      wl.facing = "left";
+      const wd = addUnit(type, team, x++, y);
+      wd.animation = "walk_down";
+      const wu = addUnit(type, team, x++, y);
+      wu.animation = "walk_up";
+      if (hasAttack) {
+        const ar = addUnit(type, team, x++, y);
+        ar.animation = "attack";
+        const al = addUnit(type, team, x++, y);
+        al.animation = "attack";
+        al.facing = "left";
+      }
+      const d = addUnit(type, team, x++, y);
+      d.animation = "death";
+    }
+
+    unitRows.forEach((row, i) => {
+      placeTestRow("blue", row.type, row.hasAttack, 1, 12 + i);
+      placeTestRow("red", row.type, row.hasAttack, 11, 12 + i);
+      placeTestRow("green", row.type, row.hasAttack, 21, 12 + i);
+      placeTestRow("yellow", row.type, row.hasAttack, 31, 12 + i);
+    });
+
+    // --- Render units ---
+    for (const unit of units) {
+      const sheet = unitSheets[unit.team];
+      if (!sheet) continue;
+      const animKey = `${unit.type}_${unit.animation}`;
+      const frames = sheet.animations[animKey];
+      if (!frames) continue;
+
+      const anim = new AnimatedSprite(frames);
+      anim.animationSpeed = 0.1;
+      anim.play();
+      anim.anchor.set(0.5, 0.5);
+      anim.x = unit.x * TILE_PX + TILE_PX / 2;
+      anim.y = unit.y * TILE_PX + TILE_PX / 2;
+      anim.width = TILE_PX;
+      anim.height = TILE_PX;
+      if (unit.facing === "left") {
+        anim.scale.x *= -1;
+      }
+      vp.addChild(anim);
+    }
 
     // --- Hover highlight ---
     const hoverGfx = new Graphics();
