@@ -1,16 +1,13 @@
 import { sepolia, mainnet } from "@starknet-react/chains";
 import type { Chain } from "@starknet-react/chains";
-import {
-  StarknetConfig,
-  jsonRpcProvider,
-  voyager,
-} from "@starknet-react/core";
+import { StarknetConfig, jsonRpcProvider, voyager } from "@starknet-react/core";
 import { ControllerConnector } from "@cartridge/connector";
 import type { SessionPolicies } from "@cartridge/presets";
 import { shortString } from "starknet";
 
 // TODO: set to deployed contract address
-const ACTIONS_ADDRESS = "0x011871ac703eb3f02ca5c435d7d60832aff24c3a40c302de489d39c483119f56";
+const ACTIONS_ADDRESS =
+  "0x011871ac703eb3f02ca5c435d7d60832aff24c3a40c302de489d39c483119f56";
 
 const policies: SessionPolicies = {
   contracts: {
@@ -30,7 +27,10 @@ const policies: SessionPolicies = {
   },
 };
 
-const connector = new ControllerConnector({ policies, defaultChainId: shortString.encodeShortString("SN_SEPOLIA") });
+const connector = new ControllerConnector({
+  policies,
+  defaultChainId: shortString.encodeShortString("SN_SEPOLIA"),
+});
 
 const provider = jsonRpcProvider({
   rpc: (chain: Chain) => {

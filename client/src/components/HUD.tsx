@@ -1,6 +1,8 @@
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
 import { ControllerConnector } from "@cartridge/connector";
 import { useEffect, useState } from "react";
+import { PixelButton } from "./PixelButton";
+import { PixelPanel } from "./PixelPanel";
 
 const LEGEND: { label: string; color: string }[] = [
   { label: "Grass", color: "#4a7c59" },
@@ -25,102 +27,49 @@ const HUD = () => {
 
   return (
     <>
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 48,
-          background: "rgba(0,0,0,0.75)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 16px",
-          gap: 24,
-          zIndex: 10,
-          color: "#fff",
-          fontFamily: "monospace",
-        }}
-      >
-        <span style={{ fontSize: 18, fontWeight: "bold", letterSpacing: 1 }}>
-          CHAIN TACTICS
+      <div className="absolute top-0 left-0 right-0 h-16 bg-blueprint-blue/60 flex items-center justify-between px-8 z-10 border-b-2 border-white backdrop-blur-sm">
+        <span className="text-base font-bold tracking-[2px] uppercase">
+          &gt; TACTICAL_DISPLAY
         </span>
+
         {address ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 13 }}>
-              {username ?? `${address.slice(0, 6)}...${address.slice(-4)}`}
-            </span>
-            <button
-              onClick={() => disconnect()}
-              style={{
-                background: "rgba(255,255,255,0.1)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                borderRadius: 4,
-                color: "#fff",
-                padding: "4px 12px",
-                cursor: "pointer",
-                fontFamily: "monospace",
-                fontSize: 13,
-              }}
+          <div className="flex items-center gap-6">
+            <PixelButton
+              variant="gray"
+              onClick={() => controller.openProfile()}
+              className="!py-1 !px-4"
             >
-              Disconnect
-            </button>
+              COMMANDER:{" "}
+              {username ?? `${address.slice(0, 6)}...${address.slice(-4)}`}
+            </PixelButton>
           </div>
         ) : (
-          <button
+          <PixelButton
+            variant="blue"
             onClick={() => connect({ connector: controller })}
-            style={{
-              background: "#daa520",
-              border: "none",
-              borderRadius: 4,
-              color: "#000",
-              padding: "6px 16px",
-              cursor: "pointer",
-              fontFamily: "monospace",
-              fontSize: 13,
-              fontWeight: "bold",
-            }}
+            className="!py-1 !px-4"
           >
-            Connect
-          </button>
+            CONNECT_SYSTEM
+          </PixelButton>
         )}
       </div>
-      <div
-        style={{
-          position: "absolute",
-          top: 56,
-          right: 12,
-          background: "rgba(0,0,0,0.75)",
-          borderRadius: 6,
-          padding: "10px 14px",
-          zIndex: 10,
-          color: "#fff",
-          fontFamily: "monospace",
-          fontSize: 13,
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-        }}
-      >
-        {LEGEND.map((item) => (
-          <div
-            key={item.label}
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
-          >
-            <span
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 2,
-                background: item.color,
-                display: "inline-block",
-                border: "1px solid rgba(255,255,255,0.2)",
-              }}
-            />
-            <span>{item.label}</span>
+
+      <div className="absolute top-24 right-8 z-10">
+        <PixelPanel title="TERRAIN_INTEL" className="!p-4 min-w-[200px]">
+          <div className="flex flex-col gap-3 mt-2">
+            {LEGEND.map((item) => (
+              <div key={item.label} className="flex items-center gap-4">
+                <span
+                  className="w-4 h-4 border border-white"
+                  style={{ background: item.color }}
+                />
+                <span className="text-xs uppercase tracking-widest">
+                  {item.label}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
+        </PixelPanel>
       </div>
     </>
   );

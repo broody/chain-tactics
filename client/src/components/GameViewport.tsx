@@ -33,7 +33,7 @@ export default function GameViewport() {
     const app = new Application();
     await app.init({
       resizeTo: containerRef.current,
-      backgroundColor: 0x1b1b1b,
+      backgroundColor: 0x001a33,
       antialias: false,
     });
 
