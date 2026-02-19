@@ -45,7 +45,8 @@ pub struct Vec2 {
     pub y: u8,
 }
 
-// ───────────────────── Into impls ─────────────────────
+// ───────────────────── Into impls
+// ─────────────────────
 
 pub impl U8IntoTileType of Into<u8, TileType> {
     fn into(self: u8) -> TileType {
@@ -82,6 +83,21 @@ pub impl UnitTypeIntoU8 of Into<UnitType, u8> {
             UnitType::Infantry => 1,
             UnitType::Tank => 2,
             UnitType::Ranger => 3,
+        }
+    }
+}
+
+pub impl TileTypeIntoU8 of Into<TileType, u8> {
+    fn into(self: TileType) -> u8 {
+        match self {
+            TileType::Grass => 0,
+            TileType::Mountain => 1,
+            TileType::City => 2,
+            TileType::Factory => 3,
+            TileType::HQ => 4,
+            TileType::Road => 5,
+            TileType::Tree => 6,
+            TileType::DirtRoad => 7,
         }
     }
 }

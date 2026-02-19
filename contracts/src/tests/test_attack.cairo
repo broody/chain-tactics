@@ -1,9 +1,8 @@
-use dojo::model::{ModelStorage, ModelStorageTest};
-use starknet::testing::{set_contract_address, set_account_contract_address};
-
 use chain_tactics::models::player::PlayerState;
 use chain_tactics::models::unit::Unit;
 use chain_tactics::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
+use dojo::model::{ModelStorage, ModelStorageTest};
+use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, PLAYER2, build_test_tiles, setup};
 
 /// Setup a 2-player game and position units adjacently for combat.

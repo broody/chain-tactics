@@ -34,7 +34,7 @@ pub impl PlayerStateImpl of PlayerStateTrait {
                 break;
             }
             i += 1;
-        };
+        }
         assert(found > 0, 'Not in this game');
         found
     }

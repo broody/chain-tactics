@@ -1,9 +1,8 @@
-use dojo::model::ModelStorage;
-use starknet::testing::{set_contract_address, set_account_contract_address};
-
 use chain_tactics::models::unit::Unit;
 use chain_tactics::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
 use chain_tactics::types::Vec2;
+use dojo::model::ModelStorage;
+use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, PLAYER2, build_test_tiles, setup};
 
 /// Setup a 2-player game in Playing state. Returns (dispatcher, world, game_id).
@@ -49,9 +48,7 @@ fn test_move_unit_full_range() {
     // Infantry move_range = 3. Move (1,0) → (2,0) → (3,0) → (4,0)
     actions_dispatcher
         .move_unit(
-            game_id,
-            1,
-            array![Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }, Vec2 { x: 4, y: 0 }],
+            game_id, 1, array![Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }, Vec2 { x: 4, y: 0 }],
         );
 
     let unit: Unit = world.read_model((game_id, 1_u8));
@@ -64,8 +61,7 @@ fn test_move_unit_diagonal_path() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
     // Move (1,0) → (1,1) → (2,1)
-    actions_dispatcher
-        .move_unit(game_id, 1, array![Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 1 }]);
+    actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 1 }]);
 
     let unit: Unit = world.read_model((game_id, 1_u8));
     assert(unit.x == 2, 'x should be 2');
@@ -122,10 +118,7 @@ fn test_move_unit_exceeds_range() {
             game_id,
             1,
             array![
-                Vec2 { x: 2, y: 0 },
-                Vec2 { x: 3, y: 0 },
-                Vec2 { x: 4, y: 0 },
-                Vec2 { x: 5, y: 0 },
+                Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }, Vec2 { x: 4, y: 0 }, Vec2 { x: 5, y: 0 },
             ],
         );
 }

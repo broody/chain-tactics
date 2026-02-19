@@ -2,7 +2,7 @@ use chain_tactics::types::{UnitType, Vec2};
 
 #[starknet::interface]
 pub trait IActions<T> {
-    fn register_map(ref self: T, player_count: u8, width: u8, height: u8, tiles: Array<u8>) -> u8;
+    fn register_map(ref self: T, width: u8, height: u8, tiles: Array<u8>) -> u8;
     fn create_game(ref self: T, map_id: u8) -> u32;
     fn join_game(ref self: T, game_id: u32);
     fn move_unit(ref self: T, game_id: u32, unit_id: u8, path: Array<Vec2>);
@@ -11,14 +11,15 @@ pub trait IActions<T> {
     fn wait_unit(ref self: T, game_id: u32, unit_id: u8);
     fn build_unit(ref self: T, game_id: u32, factory_x: u8, factory_y: u8, unit_type: UnitType);
     fn end_turn(ref self: T, game_id: u32);
+    fn get_map(self: @T, map_id: u8) -> (u8, u8, Array<u8>);
 }
 
 #[dojo::contract]
 pub mod actions {
     use chain_tactics::consts::{CAPTURE_THRESHOLD, MAX_ROUNDS, STARTING_GOLD};
     use chain_tactics::events::{
-        BuildingCaptured, GameCreated, GameOver, GameStarted, PlayerJoined, TurnEnded,
-        UnitAttacked, UnitBuilt, UnitDied, UnitMoved,
+        BuildingCaptured, GameCreated, GameOver, GameStarted, PlayerJoined, TurnEnded, UnitAttacked,
+        UnitBuilt, UnitDied, UnitMoved,
     };
     use chain_tactics::helpers::{combat, game as game_helpers, map as map_helpers, unit_stats};
     use chain_tactics::models::building::Building;
@@ -36,33 +37,15 @@ pub mod actions {
     #[abi(embed_v0)]
     impl ActionsImpl of IActions<ContractState> {
         /// Register a reusable map template. Tiles is a flat row-major array of TileType
-        /// ordinals (width x height). Returns the new map_id.
-        fn register_map(
-            ref self: ContractState, player_count: u8, width: u8, height: u8, tiles: Array<u8>,
-        ) -> u8 {
-            assert(player_count >= 2 && player_count <= 4, 'Invalid player count');
+        /// ordinals (width x height). Player count is derived from the number of HQ tiles.
+        /// Returns the new map_id.
+        fn register_map(ref self: ContractState, width: u8, height: u8, tiles: Array<u8>) -> u8 {
             assert(width > 0 && height > 0, 'Invalid dimensions');
 
             let expected: u32 = width.into() * height.into();
             assert(tiles.len() == expected, 'Tiles length mismatch');
 
             let mut world = self.world_default();
-
-            let mut counter: GameCounter = world.read_model(1_u32);
-            let map_id: u8 = (counter.count + 1).try_into().unwrap();
-            counter.count += 1;
-            world.write_model(@counter);
-
-            world
-                .write_model(
-                    @MapInfo {
-                        map_id,
-                        player_count,
-                        width,
-                        height,
-                        tile_count: expected.try_into().unwrap(),
-                    },
-                );
 
             let mut i: u32 = 0;
             let mut hq_count: u8 = 0;
@@ -73,16 +56,36 @@ pub mod actions {
                 if tile_type == TileType::HQ {
                     hq_count += 1;
                 }
-                if tile_type != TileType::Grass {
-                    world
-                        .write_model(
-                            @MapTile { map_id, index: i.try_into().unwrap(), tile_type },
-                        );
-                }
                 i += 1;
-            };
+            }
 
-            assert(hq_count == player_count, 'HQ count != player count');
+            assert(hq_count >= 2 && hq_count <= 4, 'Invalid HQ count');
+
+            let mut counter: GameCounter = world.read_model(1_u32);
+            let map_id: u8 = (counter.count + 1).try_into().unwrap();
+            counter.count += 1;
+            world.write_model(@counter);
+
+            world
+                .write_model(
+                    @MapInfo {
+                        map_id,
+                        player_count: hq_count,
+                        width,
+                        height,
+                        tile_count: expected.try_into().unwrap(),
+                    },
+                );
+
+            let mut j: u32 = 0;
+            while j < expected {
+                let tile_val: u8 = *tile_span.at(j);
+                let tile_type: TileType = tile_val.into();
+                if tile_type != TileType::Grass {
+                    world.write_model(@MapTile { map_id, index: j.try_into().unwrap(), tile_type });
+                }
+                j += 1;
+            }
 
             map_id
         }
@@ -146,7 +149,7 @@ pub mod actions {
                 }
 
                 i += 1;
-            };
+            }
 
             world
                 .write_model(
@@ -168,7 +171,8 @@ pub mod actions {
         }
 
         /// Join an existing game in the lobby. When the last player joins, transitions
-        /// to Playing state — spawns starting units, counts buildings, and runs P1 income/production.
+        /// to Playing state — spawns starting units, counts buildings, and runs P1
+        /// income/production.
         fn join_game(ref self: ContractState, game_id: u32) {
             let mut world = self.world_default();
             let caller = get_caller_address();
@@ -182,7 +186,7 @@ pub mod actions {
                 let ps: PlayerState = world.read_model((game_id, i));
                 assert(ps.address != caller, 'Already joined');
                 i += 1;
-            };
+            }
 
             game.num_players += 1;
             let player_id = game.num_players;
@@ -266,9 +270,7 @@ pub mod actions {
 
                 if i + 1 < path_span.len() {
                     assert(
-                        !UnitImpl::exists_at(
-                            ref world, game_id, step.x, step.y, game.next_unit_id,
-                        ),
+                        !UnitImpl::exists_at(ref world, game_id, step.x, step.y, game.next_unit_id),
                         'Path blocked',
                     );
                 }
@@ -276,7 +278,7 @@ pub mod actions {
                 prev_x = step.x;
                 prev_y = step.y;
                 i += 1;
-            };
+            }
 
             let dest = *path_span.at(path_span.len() - 1);
             assert(
@@ -563,7 +565,7 @@ pub mod actions {
                     found = true;
                 }
                 attempts += 1;
-            };
+            }
 
             assert(found, 'No alive players');
 
@@ -583,6 +585,23 @@ pub mod actions {
 
             world.write_model(@game);
             world.emit_event(@TurnEnded { game_id, next_player: next, round: new_round });
+        }
+
+        fn get_map(self: @ContractState, map_id: u8) -> (u8, u8, Array<u8>) {
+            let world = self.world_default();
+            let map_info: MapInfo = world.read_model(map_id);
+            assert(map_info.tile_count > 0, 'Map not registered');
+
+            let mut tiles: Array<u8> = array![];
+            let mut i: u16 = 0;
+            while i < map_info.tile_count {
+                let map_tile: MapTile = world.read_model((map_id, i));
+                let tile_val: u8 = map_tile.tile_type.into();
+                tiles.append(tile_val);
+                i += 1;
+            }
+
+            (map_info.width, map_info.height, tiles)
         }
     }
 

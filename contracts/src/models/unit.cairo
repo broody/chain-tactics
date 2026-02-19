@@ -32,7 +32,7 @@ pub impl UnitImpl of UnitTrait {
                 found = true;
             }
             i += 1;
-        };
+        }
         found
     }
 
@@ -55,7 +55,7 @@ pub impl UnitImpl of UnitTrait {
                 found = true;
             }
             i += 1;
-        };
+        }
         found
     }
 }

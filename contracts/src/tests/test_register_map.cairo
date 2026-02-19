@@ -1,9 +1,8 @@
-use dojo::model::ModelStorage;
-use starknet::testing::{set_contract_address, set_account_contract_address};
-
 use chain_tactics::models::map::{MapInfo, MapTile};
 use chain_tactics::systems::actions::IActionsDispatcherTrait;
 use chain_tactics::types::TileType;
+use dojo::model::ModelStorage;
+use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, build_test_tiles, setup};
 
 #[test]
@@ -69,7 +68,7 @@ fn test_register_map_with_mixed_tiles() {
             tiles.append(0); // Grass
         }
         i += 1;
-    };
+    }
 
     let map_id = actions_dispatcher.register_map(2, 20, 20, tiles);
 
@@ -149,6 +148,6 @@ fn test_register_map_hq_mismatch() {
             tiles.append(0);
         }
         i += 1;
-    };
+    }
     actions_dispatcher.register_map(2, 20, 20, tiles);
 }

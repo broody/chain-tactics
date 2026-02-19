@@ -1,10 +1,3 @@
-use dojo::world::{WorldStorage, WorldStorageTrait, world};
-use dojo_cairo_test::{
-    ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait,
-    spawn_test_world,
-};
-use starknet::ContractAddress;
-
 use chain_tactics::events as events;
 use chain_tactics::models::building::m_Building;
 use chain_tactics::models::game::{m_Game, m_GameCounter};
@@ -13,6 +6,12 @@ use chain_tactics::models::player::m_PlayerState;
 use chain_tactics::models::tile::m_Tile;
 use chain_tactics::models::unit::m_Unit;
 use chain_tactics::systems::actions::{IActionsDispatcher, actions};
+use dojo::world::{WorldStorage, WorldStorageTrait, world};
+use dojo_cairo_test::{
+    ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait,
+    spawn_test_world,
+};
+use starknet::ContractAddress;
 
 pub fn PLAYER1() -> ContractAddress {
     'PLAYER1'.try_into().unwrap()
@@ -84,6 +83,6 @@ pub fn build_test_tiles() -> Array<u8> {
             tiles.append(0); // Grass
         }
         i += 1;
-    };
+    }
     tiles
 }

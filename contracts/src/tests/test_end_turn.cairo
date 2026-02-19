@@ -1,6 +1,3 @@
-use dojo::model::{ModelStorage, ModelStorageTest};
-use starknet::testing::{set_contract_address, set_account_contract_address};
-
 use chain_tactics::consts::MAX_ROUNDS;
 use chain_tactics::models::building::Building;
 use chain_tactics::models::game::Game;
@@ -8,6 +5,8 @@ use chain_tactics::models::player::PlayerState;
 use chain_tactics::models::unit::Unit;
 use chain_tactics::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
 use chain_tactics::types::{BuildingType, GameState, UnitType};
+use dojo::model::{ModelStorage, ModelStorageTest};
+use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, PLAYER2, build_test_tiles, setup};
 
 fn setup_playing_game() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) {
@@ -99,7 +98,7 @@ fn test_end_turn_runs_production() {
                 owner: 2,
                 capture_player: 0,
                 capture_progress: 0,
-                queued_unit: 1, // Infantry
+                queued_unit: 1 // Infantry
             },
         );
 

@@ -54,7 +54,7 @@ pub fn spawn_starting_units(
                 }
             }
             x += 1;
-        };
+        }
         y += 1;
     };
 }
@@ -101,7 +101,7 @@ pub fn count_player_buildings(
                 world.write_model(@ps);
             }
             x += 1;
-        };
+        }
         y += 1;
     };
 }
@@ -154,7 +154,7 @@ pub fn run_production(
                 }
             }
             x += 1;
-        };
+        }
         y += 1;
     };
 }
@@ -190,7 +190,7 @@ pub fn reset_stale_captures(
                 }
             }
             x += 1;
-        };
+        }
         y += 1;
     };
 }
@@ -213,12 +213,11 @@ pub fn check_elimination(
                 has_hq = true;
             }
             x += 1;
-        };
+        }
         y += 1;
-    };
+    }
 
-    let eliminated = !has_hq
-        || (ps.unit_count == 0 && ps.factory_count == 0 && ps.gold == 0);
+    let eliminated = !has_hq || (ps.unit_count == 0 && ps.factory_count == 0 && ps.gold == 0);
 
     if eliminated {
         let mut ps_mut: PlayerState = world.read_model((game_id, player_id));
@@ -235,7 +234,7 @@ pub fn check_elimination(
                 last_alive = p;
             }
             p += 1;
-        };
+        }
 
         if alive_count == 1 {
             game.state = GameState::Finished;
@@ -246,9 +245,7 @@ pub fn check_elimination(
     }
 }
 
-pub fn timeout_winner(
-    ref world: dojo::world::WorldStorage, game_id: u32, player_count: u8,
-) -> u8 {
+pub fn timeout_winner(ref world: dojo::world::WorldStorage, game_id: u32, player_count: u8) -> u8 {
     let mut best_player: u8 = 0;
     let mut best_score: u16 = 0;
     let mut p: u8 = 1;
@@ -266,7 +263,7 @@ pub fn timeout_winner(
                     total_hp += u.hp.into();
                 }
                 i += 1;
-            };
+            }
             let score: u16 = total_hp + ps.gold.into();
             if score > best_score {
                 best_score = score;
@@ -274,6 +271,6 @@ pub fn timeout_winner(
             }
         }
         p += 1;
-    };
+    }
     best_player
 }

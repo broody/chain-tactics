@@ -1,6 +1,3 @@
-use dojo::model::ModelStorage;
-use starknet::testing::{set_contract_address, set_account_contract_address};
-
 use chain_tactics::consts::STARTING_GOLD;
 use chain_tactics::models::building::Building;
 use chain_tactics::models::game::Game;
@@ -8,6 +5,8 @@ use chain_tactics::models::player::PlayerState;
 use chain_tactics::models::tile::Tile;
 use chain_tactics::systems::actions::IActionsDispatcherTrait;
 use chain_tactics::types::{BuildingType, GameState, TileType};
+use dojo::model::ModelStorage;
+use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, build_test_tiles, setup};
 
 #[test]

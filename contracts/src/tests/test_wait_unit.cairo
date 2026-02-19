@@ -1,8 +1,7 @@
-use dojo::model::ModelStorage;
-use starknet::testing::{set_contract_address, set_account_contract_address};
-
 use chain_tactics::models::unit::Unit;
 use chain_tactics::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
+use dojo::model::ModelStorage;
+use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, PLAYER2, build_test_tiles, setup};
 
 fn setup_playing_game() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) {
