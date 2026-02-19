@@ -2,6 +2,33 @@ const TILE = 24;
 
 export const terrainAtlas = {
   frames: {
+    border_top_left: {
+      frame: { x: 0, y: TILE * 8, w: TILE, h: TILE },
+    },
+    border_water: {
+      frame: { x: 0, y: TILE, w: TILE, h: TILE },
+    },
+    border_top_right: {
+      frame: { x: TILE, y: TILE * 8, w: TILE, h: TILE },
+    },
+    border_top_edge: {
+      frame: { x: TILE * 3, y: TILE * 6, w: TILE, h: TILE },
+    },
+    border_bottom_edge: {
+      frame: { x: TILE * 3, y: TILE * 4, w: TILE, h: TILE },
+    },
+    border_right_edge: {
+      frame: { x: TILE * 2, y: TILE * 5, w: TILE, h: TILE },
+    },
+    border_left_edge: {
+      frame: { x: TILE * 4, y: TILE * 5, w: TILE, h: TILE },
+    },
+    border_bottom_left: {
+      frame: { x: 0, y: TILE * 9, w: TILE, h: TILE },
+    },
+    border_bottom_right: {
+      frame: { x: TILE, y: TILE * 9, w: TILE, h: TILE },
+    },
     grass: {
       frame: { x: TILE, y: TILE, w: TILE, h: TILE },
     },

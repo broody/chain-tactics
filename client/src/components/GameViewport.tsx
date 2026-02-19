@@ -203,6 +203,31 @@ export default function GameViewport() {
       vp.addChild(anim);
     }
 
+    // Draw water under the full outer border ring.
+    for (let y = -1; y <= GRID_SIZE; y++) {
+      for (let x = -1; x <= GRID_SIZE; x++) {
+        const isOuterRing =
+          x === -1 || x === GRID_SIZE || y === -1 || y === GRID_SIZE;
+        if (isOuterRing) {
+          addTileSprite("border_water", x, y);
+        }
+      }
+    }
+
+    // Border pieces on top of the water ring.
+    addTileSprite("border_top_left", -1, -1);
+    addTileSprite("border_top_right", GRID_SIZE, -1);
+    addTileSprite("border_bottom_left", -1, GRID_SIZE);
+    addTileSprite("border_bottom_right", GRID_SIZE, GRID_SIZE);
+    for (let x = 0; x < GRID_SIZE; x++) {
+      addTileSprite("border_top_edge", x, -1);
+      addTileSprite("border_bottom_edge", x, GRID_SIZE);
+    }
+    for (let y = 0; y < GRID_SIZE; y++) {
+      addTileSprite("border_left_edge", -1, y);
+      addTileSprite("border_right_edge", GRID_SIZE, y);
+    }
+
     for (let y = 0; y < GRID_SIZE; y++) {
       for (let x = 0; x < GRID_SIZE; x++) {
         const tile = tileMap[y * GRID_SIZE + x] as TileType;
