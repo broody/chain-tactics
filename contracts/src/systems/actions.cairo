@@ -10,7 +10,7 @@ pub trait IActions<T> {
         buildings: Array<u32>,
         units: Array<u32>,
     ) -> u8;
-    fn create_game(ref self: T, map_id: u8, player_id: u8) -> u32;
+    fn create_game(ref self: T, map_id: u8, player_id: u8, is_test_mode: bool) -> u32;
     fn join_game(ref self: T, game_id: u32, player_id: u8);
     fn move_unit(ref self: T, game_id: u32, unit_id: u8, path: Array<Vec2>);
     fn attack(ref self: T, game_id: u32, unit_id: u8, target_id: u8);
@@ -34,7 +34,7 @@ pub mod actions {
     use chain_tactics::models::building::Building;
     use chain_tactics::models::game::{Game, GameCounter};
     use chain_tactics::models::map::{MapBuilding, MapInfo, MapTile, MapUnit};
-    use chain_tactics::models::player::{PlayerState, PlayerStateImpl};
+    use chain_tactics::models::player::PlayerState;
     use chain_tactics::models::tile::Tile;
     use chain_tactics::models::unit::{Unit, UnitImpl};
     use chain_tactics::types::{BuildingType, GameState, TileType, UnitType, Vec2};
@@ -167,7 +167,9 @@ pub mod actions {
 
         /// Create a new game from a registered map. Copies tiles and buildings into per-game
         /// state and registers the caller as the chosen player_id. Returns game_id.
-        fn create_game(ref self: ContractState, map_id: u8, player_id: u8) -> u32 {
+        fn create_game(
+            ref self: ContractState, map_id: u8, player_id: u8, is_test_mode: bool,
+        ) -> u32 {
             let mut world = self.world_default();
             let caller = get_caller_address();
 
@@ -194,6 +196,7 @@ pub mod actions {
                         winner: 0,
                         width: map_info.width,
                         height: map_info.height,
+                        is_test_mode,
                     },
                 );
 
@@ -260,13 +263,15 @@ pub mod actions {
 
             // Check slot is available and caller hasn't already joined
             let zero_addr: starknet::ContractAddress = 0.try_into().unwrap();
-            let mut i: u8 = 1;
-            while i <= game.player_count {
-                let ps: PlayerState = world.read_model((game_id, i));
-                if ps.address != zero_addr {
-                    assert(ps.address != caller, 'Already joined');
+            if !game.is_test_mode {
+                let mut i: u8 = 1;
+                while i <= game.player_count {
+                    let ps: PlayerState = world.read_model((game_id, i));
+                    if ps.address != zero_addr {
+                        assert(ps.address != caller, 'Already joined');
+                    }
+                    i += 1;
                 }
-                i += 1;
             }
 
             let slot: PlayerState = world.read_model((game_id, player_id));
@@ -313,14 +318,12 @@ pub mod actions {
             let game: Game = world.read_model(game_id);
             assert(game.state == GameState::Playing, 'Game not playing');
 
-            let caller_player = PlayerStateImpl::find_player_id(
-                ref world, game_id, caller, game.player_count,
-            );
-            assert(caller_player == game.current_player, 'Not your turn');
+            let current_ps: PlayerState = world.read_model((game_id, game.current_player));
+            assert(current_ps.address == caller, 'Not your turn');
 
             let mut unit: Unit = world.read_model((game_id, unit_id));
             assert(unit.is_alive, 'Unit is dead');
-            assert(unit.player_id == caller_player, 'Not your unit');
+            assert(unit.player_id == game.current_player, 'Not your unit');
             assert(!unit.has_moved, 'Already moved');
 
             let path_span = path.span();
@@ -386,19 +389,17 @@ pub mod actions {
             let mut game: Game = world.read_model(game_id);
             assert(game.state == GameState::Playing, 'Game not playing');
 
-            let caller_player = PlayerStateImpl::find_player_id(
-                ref world, game_id, caller, game.player_count,
-            );
-            assert(caller_player == game.current_player, 'Not your turn');
+            let current_ps: PlayerState = world.read_model((game_id, game.current_player));
+            assert(current_ps.address == caller, 'Not your turn');
 
             let mut attacker: Unit = world.read_model((game_id, unit_id));
             assert(attacker.is_alive, 'Attacker is dead');
-            assert(attacker.player_id == caller_player, 'Not your unit');
+            assert(attacker.player_id == game.current_player, 'Not your unit');
             assert(!attacker.has_acted, 'Already acted');
 
             let mut defender: Unit = world.read_model((game_id, target_id));
             assert(defender.is_alive, 'Target is dead');
-            assert(defender.player_id != caller_player, 'Cannot attack own unit');
+            assert(defender.player_id != game.current_player, 'Cannot attack own unit');
 
             let distance = map_helpers::manhattan_distance(
                 attacker.x, attacker.y, defender.x, defender.y,
@@ -440,7 +441,8 @@ pub mod actions {
                     world.write_model(@attacker);
                     world.emit_event(@UnitDied { game_id, unit_id });
 
-                    let mut atk_player: PlayerState = world.read_model((game_id, caller_player));
+                    let mut atk_player: PlayerState = world
+                        .read_model((game_id, game.current_player));
                     atk_player.unit_count -= 1;
                     world.write_model(@atk_player);
                 } else {
@@ -475,23 +477,21 @@ pub mod actions {
             let mut game: Game = world.read_model(game_id);
             assert(game.state == GameState::Playing, 'Game not playing');
 
-            let caller_player = PlayerStateImpl::find_player_id(
-                ref world, game_id, caller, game.player_count,
-            );
-            assert(caller_player == game.current_player, 'Not your turn');
+            let current_ps: PlayerState = world.read_model((game_id, game.current_player));
+            assert(current_ps.address == caller, 'Not your turn');
 
             let mut unit: Unit = world.read_model((game_id, unit_id));
             assert(unit.is_alive, 'Unit is dead');
-            assert(unit.player_id == caller_player, 'Not your unit');
+            assert(unit.player_id == game.current_player, 'Not your unit');
             assert(unit.unit_type == UnitType::Infantry, 'Only infantry captures');
             assert(!unit.has_acted, 'Already acted');
 
             let mut building: Building = world.read_model((game_id, unit.x, unit.y));
             assert(building.building_type != BuildingType::None, 'No building here');
-            assert(building.owner != caller_player, 'Already own building');
+            assert(building.owner != game.current_player, 'Already own building');
 
-            if building.capture_player != caller_player {
-                building.capture_player = caller_player;
+            if building.capture_player != game.current_player {
+                building.capture_player = game.current_player;
                 building.capture_progress = 1;
             } else {
                 building.capture_progress += 1;
@@ -510,11 +510,11 @@ pub mod actions {
                     world.write_model(@old_ps);
                 }
 
-                building.owner = caller_player;
+                building.owner = game.current_player;
                 building.capture_player = 0;
                 building.capture_progress = 0;
 
-                let mut new_ps: PlayerState = world.read_model((game_id, caller_player));
+                let mut new_ps: PlayerState = world.read_model((game_id, game.current_player));
                 if building.building_type == BuildingType::Factory {
                     new_ps.factory_count += 1;
                 } else if building.building_type == BuildingType::City {
@@ -525,15 +525,15 @@ pub mod actions {
                 world
                     .emit_event(
                         @BuildingCaptured {
-                            game_id, x: unit.x, y: unit.y, player_id: caller_player,
+                            game_id, x: unit.x, y: unit.y, player_id: game.current_player,
                         },
                     );
 
                 if building.building_type == BuildingType::HQ {
                     game.state = GameState::Finished;
-                    game.winner = caller_player;
+                    game.winner = game.current_player;
                     world.write_model(@game);
-                    world.emit_event(@GameOver { game_id, winner: caller_player });
+                    world.emit_event(@GameOver { game_id, winner: game.current_player });
                 }
 
                 if old_owner != 0 {
@@ -555,14 +555,12 @@ pub mod actions {
             let game: Game = world.read_model(game_id);
             assert(game.state == GameState::Playing, 'Game not playing');
 
-            let caller_player = PlayerStateImpl::find_player_id(
-                ref world, game_id, caller, game.player_count,
-            );
-            assert(caller_player == game.current_player, 'Not your turn');
+            let current_ps: PlayerState = world.read_model((game_id, game.current_player));
+            assert(current_ps.address == caller, 'Not your turn');
 
             let mut unit: Unit = world.read_model((game_id, unit_id));
             assert(unit.is_alive, 'Unit is dead');
-            assert(unit.player_id == caller_player, 'Not your unit');
+            assert(unit.player_id == game.current_player, 'Not your unit');
 
             unit.has_moved = true;
             unit.has_acted = true;
@@ -584,20 +582,18 @@ pub mod actions {
             let game: Game = world.read_model(game_id);
             assert(game.state == GameState::Playing, 'Game not playing');
 
-            let caller_player = PlayerStateImpl::find_player_id(
-                ref world, game_id, caller, game.player_count,
-            );
-            assert(caller_player == game.current_player, 'Not your turn');
+            let current_ps: PlayerState = world.read_model((game_id, game.current_player));
+            assert(current_ps.address == caller, 'Not your turn');
 
             assert(unit_type != UnitType::None, 'Invalid unit type');
 
             let mut building: Building = world.read_model((game_id, factory_x, factory_y));
             assert(building.building_type == BuildingType::Factory, 'Not a factory');
-            assert(building.owner == caller_player, 'Not your factory');
+            assert(building.owner == game.current_player, 'Not your factory');
             assert(building.queued_unit == 0, 'Factory already queued');
 
             let unit_cost = unit_stats::cost(unit_type);
-            let mut player: PlayerState = world.read_model((game_id, caller_player));
+            let mut player: PlayerState = world.read_model((game_id, game.current_player));
             assert(player.gold >= unit_cost, 'Not enough gold');
 
             player.gold -= unit_cost;
@@ -619,15 +615,15 @@ pub mod actions {
             let mut game: Game = world.read_model(game_id);
             assert(game.state == GameState::Playing, 'Game not playing');
 
-            let caller_player = PlayerStateImpl::find_player_id(
-                ref world, game_id, caller, game.player_count,
-            );
-            assert(caller_player == game.current_player, 'Not your turn');
+            let current_ps: PlayerState = world.read_model((game_id, game.current_player));
+            assert(current_ps.address == caller, 'Not your turn');
 
             game_helpers::reset_stale_captures(
-                ref world, game_id, caller_player, game.width, game.height,
+                ref world, game_id, game.current_player, game.width, game.height,
             );
-            game_helpers::reset_unit_flags(ref world, game_id, caller_player, game.next_unit_id);
+            game_helpers::reset_unit_flags(
+                ref world, game_id, game.current_player, game.next_unit_id,
+            );
 
             let mut next = game.current_player;
             let mut new_round = game.round;

@@ -23,4 +23,5 @@ pub struct Game {
     pub winner: u8,
     pub width: u8,
     pub height: u8,
+    pub is_test_mode: bool,
 }

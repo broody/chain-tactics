@@ -20,9 +20,11 @@ Player count is derived from the number of HQ buildings (2–4). All data is pac
 
 ### Lobby & Player Slots
 
-1. A player calls `create_game(map_id, player_id)` — picks their slot (1–4), copies the map template into per-game state
-2. Other players call `join_game(game_id, player_id)` — first come first served for remaining slots
-3. When all slots are filled, the game transitions to **Playing** — starting units spawn, buildings are counted, and Player 1's income/production runs
+1. A player calls `create_game(map_id, player_id, is_test_mode)` — picks their slot (1–4), copies the map template into per-game state.
+   - If `is_test_mode` is **true**, the same address can join multiple slots in the same game.
+2. Other players call `join_game(game_id, player_id)` — first come first served for remaining slots.
+   - In normal mode, players cannot join a game they are already in.
+3. When all slots are filled, the game transitions to **Playing** — starting units spawn, buildings are counted, and Player 1's income/production runs.
 
 ### Turn Structure
 
@@ -125,6 +127,7 @@ Flags reset at the start of the owning player's next turn.
 
 | Action | System Call | Description |
 |--------|-----------|-------------|
+| **Create Game** | `create_game(map_id, player_id, is_test_mode)` | Create game and join slot |
 | **Move** | `move_unit(game_id, unit_id, path)` | Move unit along validated path |
 | **Attack** | `attack(game_id, unit_id, target_id)` | Attack enemy unit in range |
 | **Capture** | `capture(game_id, unit_id)` | Infantry captures building at current position |
