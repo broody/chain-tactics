@@ -109,5 +109,4 @@ sozo execute ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} chain_tactics-actions regi
   $WIDTH $HEIGHT \
   $TILE_COUNT $TILES \
   $BUILDING_COUNT $BUILDINGS \
-  $UNIT_COUNT $UNITS \
-  1
+  $UNIT_COUNT $UNITS 
