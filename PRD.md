@@ -147,6 +147,34 @@ Flags reset at the start of the owning player's next turn.
 2. **Elimination** — A player loses their HQ, or has 0 units + 0 factories + 0 gold. They are eliminated. Last player standing wins.
 3. **Timeout** — After 30 rounds, the alive player with the highest score (total unit HP + gold) wins.
 
+## Aesthetics & User Experience
+
+The game employs a **"Tactical Blueprint"** aesthetic, inspired by retro military terminals and high-tech command consoles. This design prioritizes high-contrast visibility, technical precision, and an immersive "on-site" feel.
+
+### Visual Style: The Tactical Blueprint
+
+- **Color Palette**: Deep navy backgrounds (`#001a33`), blueprint blue highlights (`#003366`), and stark white lines.
+- **Typography**: Rigorous use of **Roboto Mono** for all UI elements, emphasizing the feeling of a real-time data terminal.
+- **Layout**: All screens (Lobby, Leaderboard, Profile) use a boxed container with **corner markers** and a background **grid system** (30px size).
+- **Interactive Elements**: Buttons and panels feature a "blueprint" style with thin borders, subtle glows, and high-visibility hover states.
+
+### CRT Simulation Effects
+
+To enhance the retro-tech atmosphere, the entire interface is layered with CRT simulation effects:
+- **Scanlines**: Subtle horizontal lines creating the texture of a classic cathode-ray tube monitor.
+- **Flicker**: A very slight, high-frequency brightness oscillation to mimic older hardware.
+- **Vignette**: Darkened corners to focus the viewer's eye on the central tactical data.
+- **Bloom/Haze**: A soft glow (`blur(0.4px)`) applied to the entire container to simulate phosphorus bleed.
+
+### Consistent Terminology
+
+The UI uses technical, "system-level" terminology to maintain immersion:
+- **COMMANDER**: Replaces "User" or "Player" to reflect the player's role.
+- **TACTICAL_DISPLAY**: The main game viewport.
+- **DEPLOYMENT_QUEUE**: The active games list in the lobby.
+- **SYSTEM_NAV**: The main menu for profile and logs.
+- **[ACTIVE]**: Status indicators for ongoing processes.
+
 ## On-Chain Architecture
 
 ### Models (Dojo ECS)
