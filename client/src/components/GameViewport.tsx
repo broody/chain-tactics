@@ -35,7 +35,7 @@ function shortTxHash(txHash: string): string {
   return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
 }
 
-export default function GameViewport() {
+export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
   const { id } = useParams<{ id: string }>();
   const gameId = Number.parseInt(id || "", 10);
   const explorer = useExplorer();
@@ -770,6 +770,11 @@ export default function GameViewport() {
     });
     ro.observe(containerRef.current);
 
+    // Call onLoaded after everything is set up
+    if (onLoaded) {
+      setTimeout(onLoaded, 500); // Slight delay to ensure first frame is actually visible
+    }
+
     cleanupRef.current = () => {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
@@ -779,7 +784,7 @@ export default function GameViewport() {
       app.ticker.remove(tickerCb);
       ro.disconnect();
     };
-  }, []);
+  }, [gameId, onLoaded]);
 
   useEffect(() => {
     init();
