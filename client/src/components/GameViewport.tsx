@@ -1,6 +1,10 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { useProvider, useSendTransaction } from "@starknet-react/core";
+import {
+  useExplorer,
+  useProvider,
+  useSendTransaction,
+} from "@starknet-react/core";
 import {
   AnimatedSprite,
   Application,
@@ -26,9 +30,15 @@ import { useToast } from "./Toast";
 
 const WORLD_SIZE = GRID_SIZE * TILE_PX;
 
+function shortTxHash(txHash: string): string {
+  if (txHash.length <= 14) return txHash;
+  return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
+}
+
 export default function GameViewport() {
   const { id } = useParams<{ id: string }>();
   const gameId = Number.parseInt(id || "", 10);
+  const explorer = useExplorer();
   const { provider } = useProvider();
   const { sendAsync: sendMoveUnit } = useSendTransaction({});
   const { toast } = useToast();
@@ -552,20 +562,9 @@ export default function GameViewport() {
       ev.preventDefault();
     }
 
-    function startMovement(unit: Unit, gridX: number, gridY: number) {
+    function startMovement(unit: Unit, path: { x: number; y: number }[]) {
       if (activeMovements.has(unit.id)) return; // already moving
       if (pendingMoveTransactions.has(unit.id)) return; // waiting on tx
-
-      const range = UNIT_MOVE_RANGE[unit.type] ?? 5;
-      const path = findPath(
-        tileMap,
-        unit.x,
-        unit.y,
-        gridX,
-        gridY,
-        range,
-        getBlockedTiles(unit.id),
-      );
       if (path.length === 0) return;
 
       const ms: MoveState = {
@@ -608,7 +607,22 @@ export default function GameViewport() {
       if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE)
         return;
 
-      startMovement(selectedUnit, gridX, gridY);
+      const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
+      const path = findPath(
+        tileMap,
+        selectedUnit.x,
+        selectedUnit.y,
+        gridX,
+        gridY,
+        range,
+        getBlockedTiles(selectedUnit.id),
+      );
+      if (path.length === 0) return;
+
+      const originX = selectedUnit.x;
+      const originY = selectedUnit.y;
+      startMovement(selectedUnit, path);
+      void submitMoveTransaction(selectedUnit, path, originX, originY);
       pathGfx.clear();
     }
 
@@ -677,9 +691,13 @@ export default function GameViewport() {
         await providerRef.current.waitForTransaction(res.transaction_hash, {
           retryInterval: 500,
         });
-        toastRef.current("Move confirmed.", "success");
+        toastRef.current("Move confirmed.", "success", {
+          linkUrl: explorer.transaction(res.transaction_hash),
+          linkLabel: `TX ${shortTxHash(res.transaction_hash)}`,
+        });
       } catch (error) {
         console.error("Move transaction failed:", error);
+        activeMovements.delete(unit.id);
         rollbackUnitPosition(unit, sprite, originX, originY);
         toastRef.current("Move failed. Unit moved back.", "error");
       } finally {
@@ -709,12 +727,6 @@ export default function GameViewport() {
             setUnitAnim(ms.unit, sprite, "idle");
             activeMovements.delete(id);
             drawSelection();
-            void submitMoveTransaction(
-              ms.unit,
-              ms.path,
-              ms.originX,
-              ms.originY,
-            );
             continue;
           }
 

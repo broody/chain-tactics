@@ -4,14 +4,21 @@ import { PixelPanel } from "./PixelPanel";
 
 export type ToastType = "info" | "success" | "warning" | "error";
 
+export interface ToastOptions {
+  linkUrl?: string;
+  linkLabel?: string;
+}
+
 export interface ToastItem {
   id: string;
   message: string;
   type: ToastType;
+  linkUrl?: string;
+  linkLabel?: string;
 }
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, options?: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -21,15 +28,27 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const toast = useCallback((message: string, type: ToastType = "info") => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
+  const toast = useCallback(
+    (message: string, type: ToastType = "info", options: ToastOptions = {}) => {
+      const id = Math.random().toString(36).substr(2, 9);
+      setToasts((prev) => [
+        ...prev,
+        {
+          id,
+          message,
+          type,
+          linkUrl: options.linkUrl,
+          linkLabel: options.linkLabel,
+        },
+      ]);
 
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
-  }, []);
+      // Auto-remove after 3 seconds
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 3000);
+    },
+    [],
+  );
 
   return (
     <ToastContext.Provider value={{ toast }}>
@@ -43,6 +62,18 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({
             >
               <div className="p-4 text-xs uppercase tracking-widest text-blueprint-light">
                 {t.message}
+                {t.linkUrl && (
+                  <div className="mt-2">
+                    <a
+                      href={t.linkUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:opacity-80 break-all"
+                    >
+                      {t.linkLabel ?? "OPEN IN EXPLORER"}
+                    </a>
+                  </div>
+                )}
               </div>
             </PixelPanel>
           </div>

@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   useAccount,
   useConnect,
+  useExplorer,
   useProvider,
   useSendTransaction,
 } from "@starknet-react/core";
@@ -104,9 +105,15 @@ function normalizeAddressHex(value: string | null | undefined): string | null {
   }
 }
 
+function shortTxHash(txHash: string): string {
+  if (txHash.length <= 14) return txHash;
+  return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
+}
+
 export default function Lobby() {
   const { connect, connectors } = useConnect();
   const { address } = useAccount();
+  const explorer = useExplorer();
   const { provider } = useProvider();
   const { sendAsync: sendTransaction } = useSendTransaction({});
   const graphqlClient = useClient();
@@ -177,7 +184,10 @@ export default function Lobby() {
       const receipt = await provider.getTransactionReceipt(tx.transaction_hash);
       console.log("create_game receipt:", receipt);
 
-      toast("Deployment confirmed.", "success");
+      toast("Deployment confirmed.", "success", {
+        linkUrl: explorer.transaction(tx.transaction_hash),
+        linkLabel: `TX ${shortTxHash(tx.transaction_hash)}`,
+      });
       setIsCreateModalOpen(false);
     } catch (error) {
       console.error("Failed to create deployment:", error);
@@ -233,7 +243,10 @@ export default function Lobby() {
       await provider.waitForTransaction(tx.transaction_hash, {
         retryInterval: 500,
       });
-      toast("Joined game successfully.", "success");
+      toast("Joined game successfully.", "success", {
+        linkUrl: explorer.transaction(tx.transaction_hash),
+        linkLabel: `TX ${shortTxHash(tx.transaction_hash)}`,
+      });
       setIsJoinModalOpen(false);
       navigate(`/game/${gameId}`);
     } catch (error) {

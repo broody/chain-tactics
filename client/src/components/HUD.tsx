@@ -1,8 +1,16 @@
-import { useAccount, useConnect } from "@starknet-react/core";
+import {
+  useAccount,
+  useConnect,
+  useExplorer,
+  useProvider,
+  useSendTransaction,
+} from "@starknet-react/core";
 import { ControllerConnector } from "@cartridge/connector";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useClient } from "urql";
+import { ACTIONS_ADDRESS } from "../StarknetProvider";
+import { useToast } from "./Toast";
 import { PixelButton } from "./PixelButton";
 import { PixelPanel } from "./PixelPanel";
 
@@ -46,20 +54,34 @@ function normalizeAddressHex(value: string | null | undefined): string | null {
   }
 }
 
+function shortTxHash(txHash: string): string {
+  if (txHash.length <= 14) return txHash;
+  return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
+}
+
 const HUD = () => {
   const { id } = useParams<{ id: string }>();
   const gameId = parseInt(id || "1", 10) || 1;
   const graphqlClient = useClient();
+  const explorer = useExplorer();
+  const { provider } = useProvider();
+  const { sendAsync: sendTransaction } = useSendTransaction({});
+  const { toast } = useToast();
 
   const { connect, connectors } = useConnect();
   const { address } = useAccount();
   const [username, setUsername] = useState<string>();
   const [currentPlayer, setCurrentPlayer] = useState<number | null>(null);
   const [myPlayerId, setMyPlayerId] = useState<number | null>(null);
+  const [isEndingTurn, setIsEndingTurn] = useState(false);
   const controllerConnector = useMemo(
     () => ControllerConnector.fromConnectors(connectors),
     [connectors],
   );
+  const canEndTurn =
+    myPlayerId !== null &&
+    currentPlayer !== null &&
+    myPlayerId === currentPlayer;
 
   useEffect(() => {
     if (!address) return;
@@ -131,6 +153,41 @@ const HUD = () => {
     };
   }, [address, gameId, graphqlClient]);
 
+  async function handleEndTurn() {
+    if (!address) {
+      connect({ connector: controllerConnector });
+      return;
+    }
+    if (!canEndTurn || isEndingTurn) return;
+
+    setIsEndingTurn(true);
+    try {
+      toast("Ending turn...", "info");
+      const tx = await sendTransaction([
+        {
+          contractAddress: ACTIONS_ADDRESS,
+          entrypoint: "end_turn",
+          calldata: [gameId.toString()],
+        },
+      ]);
+      if (!tx?.transaction_hash) {
+        throw new Error("Missing transaction hash");
+      }
+      await provider.waitForTransaction(tx.transaction_hash, {
+        retryInterval: 500,
+      });
+      toast("Turn ended.", "success", {
+        linkUrl: explorer.transaction(tx.transaction_hash),
+        linkLabel: `TX ${shortTxHash(tx.transaction_hash)}`,
+      });
+    } catch (error) {
+      console.error("Failed to end turn:", error);
+      toast("Failed to end turn.", "error");
+    } finally {
+      setIsEndingTurn(false);
+    }
+  }
+
   return (
     <>
       <div className="absolute top-0 left-0 right-0 h-16 bg-blueprint-blue/60 flex items-center justify-between px-8 z-10 border-b-2 border-white backdrop-blur-sm">
@@ -193,6 +250,14 @@ const HUD = () => {
                 {myPlayerId === null ? "NOT JOINED" : `P${myPlayerId}`}
               </span>
             </div>
+            <PixelButton
+              variant="blue"
+              onClick={handleEndTurn}
+              disabled={isEndingTurn || !address || !canEndTurn}
+              className="!mt-2"
+            >
+              {isEndingTurn ? "ENDING..." : "END TURN"}
+            </PixelButton>
           </div>
         </PixelPanel>
       </div>
