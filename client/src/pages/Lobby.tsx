@@ -1042,7 +1042,7 @@ export default function Lobby() {
                     value={operationName}
                     onChange={(e) => setOperationName(e.target.value)}
                     placeholder="e.g. Iron Ridge Offensive"
-                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none uppercase tracking-wide"
+                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none tracking-wide"
                     disabled={isDeploying}
                   />
                 </label>
