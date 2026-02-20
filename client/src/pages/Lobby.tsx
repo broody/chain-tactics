@@ -148,17 +148,21 @@ const ECGMonitor = ({
           }}
         >
           {/* Repeating heartbeat path - 2 segments to allow continuous scroll */}
-          <path
-            d="M0,20 L15,20 L18,10 L22,30 L25,20 L40,20 L55,20 L58,10 L62,30 L65,20 L80,20 L95,20 L98,10 L102,30 L105,20 L120,20 L135,20 L138,10 L142,30 L145,20 L160,20"
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.5)"
-            strokeWidth="1.2"
-            className="animate-ecg-glow flicker-text"
-            style={{ 
-              animationDuration: `${scrollDuration * 0.5}s`,
-              animationDelay: `-${(randomDelay * 0.8) % 5}s`
-            }}
-          />
+          <g 
+            className="flicker-text" 
+            style={{ animationDelay: `-${(randomDelay * 0.8) % 5}s` }}
+          >
+            <path
+              d="M0,20 L15,20 L18,10 L22,30 L25,20 L40,20 L55,20 L58,10 L62,30 L65,20 L80,20 L95,20 L98,10 L102,30 L105,20 L120,20 L135,20 L138,10 L142,30 L145,20 L160,20"
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.5)"
+              strokeWidth="1.2"
+              className="animate-ecg-glow"
+              style={{ 
+                animationDuration: `${scrollDuration * 0.5}s`,
+              }}
+            />
+          </g>
         </svg>
       </div>
 
