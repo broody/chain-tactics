@@ -110,6 +110,34 @@ function shortTxHash(txHash: string): string {
   return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
 }
 
+const UnitIcon = ({ type = "tank", color = "blue" }: { type?: string; color?: "blue" | "red" | "green" | "yellow" }) => {
+  const yMap: Record<string, number> = {
+    tank: 400,
+    rifle: 48,
+    rpg: 80,
+    mg: 112,
+    heavy_tank: 432,
+    jeep: 304,
+  };
+  const y = yMap[type] || 400;
+  return (
+    <div 
+      className="w-10 h-10 border border-white/20 bg-black/40 flex items-center justify-center overflow-hidden shrink-0"
+      style={{ imageRendering: "pixelated" }}
+    >
+      <div 
+        style={{
+          width: "32px",
+          height: "32px",
+          backgroundImage: `url(/tilesets/units_${color}.png)`,
+          backgroundPosition: `0px -${y}px`,
+          transform: "scale(1.5)",
+        }}
+      />
+    </div>
+  );
+};
+
 export default function Lobby() {
   const { connect, connectors } = useConnect();
   const { address } = useAccount();
@@ -521,16 +549,52 @@ export default function Lobby() {
 
   return (
     <BlueprintContainer>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-[3px] border-white pb-5 mb-2">
-        <div>
-          <h1 className="text-2xl md:text-4xl font-bold tracking-[2px] m-0">
-            HASHFRONT
-          </h1>
-          <div className="text-sm mt-1 opacity-80">
-            &gt; FULLY_ONCHAIN_STRATEGY
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-[3px] border-white pb-5 mb-2 relative overflow-hidden">
+        {/* Decorative Background SVG for Header */}
+        <div className="absolute right-0 top-0 h-full w-1/2 opacity-10 pointer-events-none">
+          <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
+            <path d="M0,50 L400,50 M0,20 L400,20 M0,80 L400,80" stroke="white" strokeWidth="1" strokeDasharray="10,5" />
+            <circle cx="350" cy="50" r="30" stroke="white" strokeWidth="1" fill="none" />
+            <path d="M350,20 L350,80 M320,50 L380,50" stroke="white" strokeWidth="1" />
+          </svg>
+        </div>
+
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="hidden md:block">
+            <svg width="40" height="40" viewBox="0 0 40 40" className="flicker-text">
+              {/* Main Hash Lines */}
+              <g stroke="white" fill="none" strokeLinecap="butt">
+                {/* Vertical bars with echo lines */}
+                <path d="M15 4 L12 36" strokeWidth="2" />
+                <path d="M18 4 L15 36" strokeWidth="0.5" opacity="0.4" />
+                
+                <path d="M28 4 L25 36" strokeWidth="2" />
+                <path d="M31 4 L28 36" strokeWidth="0.5" opacity="0.4" />
+
+                {/* Horizontal bars with echo lines */}
+                <path d="M4 14 L36 11" strokeWidth="2" />
+                <path d="M4 17 L36 14" strokeWidth="0.5" opacity="0.4" />
+                
+                <path d="M4 27 L36 24" strokeWidth="2" />
+                <path d="M4 30 L36 27" strokeWidth="0.5" opacity="0.4" />
+
+                {/* Center precision crosshair */}
+                <path d="M18 20 H22 M20 18 V22" strokeWidth="0.5" opacity="0.8" />
+              </g>
+              {/* Framing corners */}
+              <path d="M2 2 H8 M2 2 V8 M32 2 H38 M38 2 V8 M2 38 H8 M2 38 V32 M32 38 H38 M38 38 V32" stroke="white" strokeWidth="0.5" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-4xl font-bold tracking-[4px] m-0 flex items-center gap-2 flicker-text">
+              HASHFRONT <span className="text-xs font-normal border border-white px-1 animate-pulse">LIVE</span>
+            </h1>
+            <div className="text-sm mt-1 opacity-80 font-mono">
+              &gt; SYSTEM_READY // LATENCY: 24ms // SECTOR: 0x7A
+            </div>
           </div>
         </div>
-        <div className="text-right mt-4 md:mt-0 flex flex-col items-end">
+        <div className="text-right mt-4 md:mt-0 flex flex-col items-end relative z-10">
           {address ? (
             <PixelButton
               variant="gray"
@@ -579,21 +643,31 @@ export default function Lobby() {
                 const isPlaying = state === "Playing";
                 const isJoiningThisGame = joiningGameId === gameId;
                 const actionLabel = isLobby ? "JOIN" : "WATCH_FEED";
+                
+                // Deterministic icon selection based on gameId
+                const unitTypes = ["tank", "rifle", "rpg", "mg", "heavy_tank", "jeep"];
+                const unitColors: ("blue" | "red" | "green" | "yellow")[] = ["blue", "red", "green", "yellow"];
+                const unitType = unitTypes[gameId % unitTypes.length];
+                const unitColor = unitColors[gameId % unitColors.length];
+
                 return (
                   <div
                     key={gameId}
-                    className="border-b-2 border-dashed border-white py-5 grid grid-cols-[120px_1fr_180px] items-center gap-4 hover:bg-white/10 transition-colors"
+                    className="border-b-2 border-dashed border-white py-6 grid grid-cols-[80px_1fr_180px] items-center gap-4 hover:bg-white/10 transition-colors relative"
                   >
-                    <div className="text-sm opacity-70">ID: {gameId}</div>
+                    <div className="flex flex-col gap-2">
+                      <div className="text-sm opacity-50 font-mono">#{gameId}</div>
+                    </div>
                     <div>
-                      <div className="text-lg font-bold">
+                      <div className="text-lg font-bold flex items-center gap-2">
                         OPERATION_{gameId}
+                        {isPlaying && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        )}
                       </div>
-                      <div className="text-xs mt-1">
-                        STATUS: {statusLabel} | SLOTS:{" "}
-                        {toNumber(game.num_players)}/
-                        {toNumber(game.player_count)}
-                        {isPlaying ? ` | ROUND: ${toNumber(game.round)}` : ""}
+                      <div className="text-xs mt-1 uppercase opacity-80 flex flex-col gap-1">
+                        <div>STATUS: {statusLabel} // SLOTS: {toNumber(game.num_players)}/{toNumber(game.player_count)}</div>
+                        <div>MAP: {toNumber(game.map_id)} // {isPlaying ? `ROUND: ${toNumber(game.round)}` : "PREPARING..."}</div>
                       </div>
                     </div>
                     {isLobby ? (
@@ -643,58 +717,95 @@ export default function Lobby() {
           </div>
         </PixelPanel>
 
-        <div className="flex flex-col gap-8 overflow-y-auto">
-          <PixelPanel title="System Nav">
-            <div className="text-base flex flex-col gap-4">
+        <div className="flex flex-col gap-8 overflow-y-auto pr-1">
+          <PixelPanel title="System Nav" className="relative">
+            <div className="absolute top-2 right-2 opacity-20 hidden lg:block">
+              <svg width="60" height="60" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" stroke="white" strokeWidth="1" fill="none" />
+                <circle cx="50" cy="50" r="30" stroke="white" strokeWidth="1" fill="none" opacity="0.5" />
+                <circle cx="50" cy="50" r="15" stroke="white" strokeWidth="1" fill="none" opacity="0.3" />
+                <line x1="50" y1="50" x2="50" y2="5" stroke="white" strokeWidth="2" className="origin-center animate-[spin_4s_linear_infinite]" />
+                <circle cx="70" cy="30" r="3" fill="white" className="animate-pulse" />
+                <circle cx="40" cy="70" r="2" fill="white" opacity="0.5" />
+              </svg>
+            </div>
+            <div className="text-base flex flex-col gap-4 relative z-10">
               <Link
                 to="/player/me"
-                className="hover:translate-x-2 transition-transform"
+                className="hover:translate-x-2 transition-transform flex items-center gap-2"
               >
-                &gt; PROFILE
+                <span>&gt;</span> PROFILE
               </Link>
               <Link
                 to="/leaderboard"
-                className="hover:translate-x-2 transition-transform"
+                className="hover:translate-x-2 transition-transform flex items-center gap-2"
               >
-                &gt; LEADERBOARD
+                <span>&gt;</span> LEADERBOARD
               </Link>
               <a
                 href="#"
-                className="hover:translate-x-2 transition-transform"
+                className="hover:translate-x-2 transition-transform opacity-50 cursor-not-allowed flex items-center gap-2"
                 onClick={(e) => {
                   e.preventDefault();
                   toast("Access denied", "error");
                 }}
               >
-                &gt; MAP_EDITOR
+                <span>&gt;</span> MAP_EDITOR <span className="text-[10px] border border-white/30 px-1">LOCKED</span>
               </a>
               <a
                 href="#"
-                className="hover:translate-x-2 transition-transform"
+                className="hover:translate-x-2 transition-transform flex items-center gap-2"
                 onClick={(e) => {
                   e.preventDefault();
                   toast("Access denied", "error");
                 }}
               >
-                &gt; SETTINGS
+                <span>&gt;</span> SETTINGS
               </a>
             </div>
           </PixelPanel>
 
           <PixelPanel title="24HR STATUS">
-            <div className="text-base space-y-3">
-              <div className="flex justify-between border-b border-white/10 pb-1">
-                <span className="opacity-70">IN_PROGRESS:</span>
-                <span className="font-bold">342</span>
+            <div className="text-base space-y-4">
+              <div className="flex justify-between items-end border-b border-white/10 pb-2">
+                <div className="flex flex-col">
+                  <span className="text-xs opacity-50 uppercase tracking-tighter">IN_PROGRESS</span>
+                  <span className="font-bold text-xl">342</span>
+                </div>
+                <div className="h-8 w-16">
+                  <svg viewBox="0 0 100 40" className="h-full w-full stroke-blue-400">
+                    <path d="M0,35 L20,30 L40,35 L60,15 L80,25 L100,5" fill="none" strokeWidth="2" />
+                  </svg>
+                </div>
               </div>
-              <div className="flex justify-between border-b border-white/10 pb-1">
-                <span className="opacity-70">COMPLETED:</span>
-                <span className="font-bold">1420</span>
+              <div className="flex justify-between items-end border-b border-white/10 pb-2">
+                <div className="flex flex-col">
+                  <span className="text-xs opacity-50 uppercase tracking-tighter">COMPLETED</span>
+                  <span className="font-bold text-xl">1420</span>
+                </div>
+                <div className="h-8 w-16">
+                  <svg viewBox="0 0 100 40" className="h-full w-full stroke-green-400">
+                    <path d="M0,35 L20,25 L40,30 L60,10 L80,15 L100,5" fill="none" strokeWidth="2" />
+                  </svg>
+                </div>
               </div>
-              <div className="flex justify-between border-b border-white/10 pb-1">
-                <span className="opacity-70">TRANSACTIONS:</span>
-                <span className="font-bold">12K</span>
+              <div className="flex justify-between items-end border-b border-white/10 pb-2">
+                <div className="flex flex-col">
+                  <span className="text-xs opacity-50 uppercase tracking-tighter">TRANSACTIONS</span>
+                  <span className="font-bold text-xl">12K</span>
+                </div>
+                <div className="h-8 w-16">
+                  <svg viewBox="0 0 100 40" className="h-full w-full stroke-white/50">
+                    <path d="M0,30 L20,32 L40,28 L60,35 L80,25 L100,20" fill="none" strokeWidth="2" />
+                  </svg>
+                </div>
               </div>
+            </div>
+            
+            <div className="mt-4 p-2 bg-white/5 border border-white/10 text-[10px] font-mono leading-tight opacity-70">
+              [LOG_INFO]: CARGO_INIT_COMPLETE <br/>
+              [LOG_INFO]: DOJO_WORLD_CONNECTED <br/>
+              [LOG_INFO]: KATANA_SYNC_SUCCESS
             </div>
           </PixelPanel>
         </div>
