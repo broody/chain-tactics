@@ -110,30 +110,65 @@ function shortTxHash(txHash: string): string {
   return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
 }
 
-const UnitIcon = ({ type = "tank", color = "blue" }: { type?: string; color?: "blue" | "red" | "green" | "yellow" }) => {
-  const yMap: Record<string, number> = {
-    tank: 400,
-    rifle: 48,
-    rpg: 80,
-    mg: 112,
-    heavy_tank: 432,
-    jeep: 304,
-  };
-  const y = yMap[type] || 400;
+const ECGMonitor = ({ playerCount = 1, gameId = 0 }: { playerCount: number; gameId: number }) => {
+  const pulses = Math.max(1, playerCount);
+  // Slower scroll speed: 1p=6s, 4p=1.5s approx
+  const scrollDuration = Math.max(1.5, 7.5 - pulses * 1.5);
+  
+  // Use a more complex prime-based offset for better "randomness"
+  // (gameId * a_prime + some_other_prime) % scrollDuration
+  const randomDelay = ((gameId * 37.7) + 13.3) % scrollDuration;
+  
   return (
-    <div 
-      className="w-10 h-10 border border-white/20 bg-black/40 flex items-center justify-center overflow-hidden shrink-0"
-      style={{ imageRendering: "pixelated" }}
-    >
+    <div className="relative w-16 h-16 border border-white/10 bg-blueprint-dark/40 overflow-hidden rounded group">
+      {/* Background Grid */}
       <div 
+        className="absolute inset-0 opacity-10"
         style={{
-          width: "32px",
-          height: "32px",
-          backgroundImage: `url(/tilesets/units_${color}.png)`,
-          backgroundPosition: `0px -${y}px`,
-          transform: "scale(1.5)",
+          backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)",
+          backgroundSize: "4px 4px"
         }}
       />
+      
+      <div className="absolute inset-0 flex items-center">
+        <svg 
+          viewBox="0 0 160 40" 
+          className="h-full shrink-0 animate-ecg-scroll"
+          style={{ 
+            animationDuration: `${scrollDuration}s`,
+            animationDelay: `-${randomDelay}s`
+          }}
+        >
+          {/* Repeating heartbeat path - 2 segments to allow continuous scroll */}
+          <path
+            d="M0,20 L15,20 L18,10 L22,30 L25,20 L40,20 L55,20 L58,10 L62,30 L65,20 L80,20 L95,20 L98,10 L102,30 L105,20 L120,20 L135,20 L138,10 L142,30 L145,20 L160,20"
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.5)"
+            strokeWidth="1.2"
+            className="animate-ecg-glow"
+            style={{ animationDuration: `${scrollDuration * 0.5}s` }}
+          />
+        </svg>
+      </div>
+      
+      {/* Realistic CRT Beam */}
+      <div 
+        className="absolute top-0 bottom-0 w-12 animate-ecg-sweep pointer-events-none"
+        style={{ 
+          animationDuration: `${scrollDuration * 2}s`,
+          animationDelay: `-${(randomDelay * 1.3) % (scrollDuration * 2)}s`
+        }}
+      >
+        {/* Leading sharp line */}
+        <div className="absolute right-0 top-0 bottom-0 w-[1.5px] bg-white/30 shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+        {/* Trailing phosphor decay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/10" />
+      </div>
+      
+      {/* Pulse status indicator */}
+      <div className="absolute bottom-1 right-1 text-[7px] font-mono text-white/20 leading-none uppercase">
+        VITAL_{pulses > 1 ? "MULT" : "STABLE"}
+      </div>
     </div>
   );
 };
@@ -561,25 +596,14 @@ export default function Lobby() {
 
         <div className="relative z-10 flex items-center gap-4">
           <div className="hidden md:block">
-            <svg width="40" height="40" viewBox="0 0 40 40" className="flicker-text">
-              {/* Main Hash Lines */}
-              <g stroke="white" fill="none" strokeLinecap="butt">
-                {/* Vertical bars with echo lines */}
-                <path d="M15 4 L12 36" strokeWidth="2" />
-                <path d="M18 4 L15 36" strokeWidth="0.5" opacity="0.4" />
-                
-                <path d="M28 4 L25 36" strokeWidth="2" />
-                <path d="M31 4 L28 36" strokeWidth="0.5" opacity="0.4" />
-
-                {/* Horizontal bars with echo lines */}
-                <path d="M4 14 L36 11" strokeWidth="2" />
-                <path d="M4 17 L36 14" strokeWidth="0.5" opacity="0.4" />
-                
-                <path d="M4 27 L36 24" strokeWidth="2" />
-                <path d="M4 30 L36 27" strokeWidth="0.5" opacity="0.4" />
-
-                {/* Center precision crosshair */}
-                <path d="M18 20 H22 M20 18 V22" strokeWidth="0.5" opacity="0.8" />
+            <svg width="60" height="60" viewBox="0 0 40 40" className="flicker-text">
+              <g transform="skewX(-15) skewY(5) scale(0.9)" transform-origin="center">
+                <g stroke="white" fill="none" strokeWidth="2">
+                  <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />
+                </g>
+                <g stroke="white" fill="none" strokeWidth="0.5" opacity="0.3" transform="translate(4,4)">
+                  <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />
+                </g>
               </g>
               {/* Framing corners */}
               <path d="M2 2 H8 M2 2 V8 M32 2 H38 M38 2 V8 M2 38 H8 M2 38 V32 M32 38 H38 M38 38 V32" stroke="white" strokeWidth="0.5" />
@@ -644,19 +668,14 @@ export default function Lobby() {
                 const isJoiningThisGame = joiningGameId === gameId;
                 const actionLabel = isLobby ? "JOIN" : "WATCH_FEED";
                 
-                // Deterministic icon selection based on gameId
-                const unitTypes = ["tank", "rifle", "rpg", "mg", "heavy_tank", "jeep"];
-                const unitColors: ("blue" | "red" | "green" | "yellow")[] = ["blue", "red", "green", "yellow"];
-                const unitType = unitTypes[gameId % unitTypes.length];
-                const unitColor = unitColors[gameId % unitColors.length];
-
                 return (
                   <div
                     key={gameId}
-                    className="border-b-2 border-dashed border-white py-6 grid grid-cols-[80px_1fr_180px] items-center gap-4 hover:bg-white/10 transition-colors relative"
+                    className="border-b-2 border-dashed border-white py-6 grid grid-cols-[50px_70px_1fr_180px] items-center gap-4 hover:bg-white/10 transition-colors relative"
                   >
-                    <div className="flex flex-col gap-2">
-                      <div className="text-sm opacity-50 font-mono">#{gameId}</div>
+                    <div className="text-sm opacity-50 font-mono">#{gameId}</div>
+                    <div className="flex items-center">
+                      <ECGMonitor playerCount={toNumber(game.num_players)} gameId={gameId} />
                     </div>
                     <div>
                       <div className="text-lg font-bold flex items-center gap-2">
@@ -710,7 +729,8 @@ export default function Lobby() {
                 }
                 setIsCreateModalOpen(true);
               }}
-              className="w-full py-4 text-lg"
+              className="w-full py-4 text-lg flicker-text"
+              style={{ animationDelay: "-0.8s" }}
             >
               DEPLOY NEW OPERATION
             </PixelButton>
@@ -741,6 +761,12 @@ export default function Lobby() {
                 className="hover:translate-x-2 transition-transform flex items-center gap-2"
               >
                 <span>&gt;</span> LEADERBOARD
+              </Link>
+              <Link
+                to="/logo-gallery"
+                className="hover:translate-x-2 transition-transform flex items-center gap-2 text-green-400"
+              >
+                <span>&gt;</span> LOGO_LAB <span className="text-[10px] border border-green-400 px-1">NEW</span>
               </Link>
               <a
                 href="#"
@@ -773,7 +799,11 @@ export default function Lobby() {
                   <span className="font-bold text-xl">342</span>
                 </div>
                 <div className="h-8 w-16">
-                  <svg viewBox="0 0 100 40" className="h-full w-full stroke-blue-400">
+                  <svg 
+                    viewBox="0 0 100 40" 
+                    className="h-full w-full stroke-blue-400 flicker-text"
+                    style={{ animationDelay: "-1.2s" }}
+                  >
                     <path d="M0,35 L20,30 L40,35 L60,15 L80,25 L100,5" fill="none" strokeWidth="2" />
                   </svg>
                 </div>
@@ -784,7 +814,11 @@ export default function Lobby() {
                   <span className="font-bold text-xl">1420</span>
                 </div>
                 <div className="h-8 w-16">
-                  <svg viewBox="0 0 100 40" className="h-full w-full stroke-green-400">
+                  <svg 
+                    viewBox="0 0 100 40" 
+                    className="h-full w-full stroke-green-400 flicker-text"
+                    style={{ animationDelay: "-3.7s" }}
+                  >
                     <path d="M0,35 L20,25 L40,30 L60,10 L80,15 L100,5" fill="none" strokeWidth="2" />
                   </svg>
                 </div>
@@ -795,7 +829,11 @@ export default function Lobby() {
                   <span className="font-bold text-xl">12K</span>
                 </div>
                 <div className="h-8 w-16">
-                  <svg viewBox="0 0 100 40" className="h-full w-full stroke-white/50">
+                  <svg 
+                    viewBox="0 0 100 40" 
+                    className="h-full w-full stroke-white/50 flicker-text"
+                    style={{ animationDelay: "-2.1s" }}
+                  >
                     <path d="M0,30 L20,32 L40,28 L60,35 L80,25 L100,20" fill="none" strokeWidth="2" />
                   </svg>
                 </div>

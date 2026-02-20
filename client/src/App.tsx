@@ -5,6 +5,7 @@ import Game from "./pages/Game";
 import Leaderboard from "./pages/Leaderboard";
 import Lobby from "./pages/Lobby";
 import Profile from "./pages/Profile";
+import LogoGallery from "./pages/LogoGallery";
 import { ToastProvider } from "./components/Toast";
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
               <Route path="/game/:id" element={<Game />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/player/:address" element={<Profile />} />
+              <Route path="/logo-gallery" element={<LogoGallery />} />
             </Routes>
           </BrowserRouter>
         </ToastProvider>
