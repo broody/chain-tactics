@@ -33,6 +33,7 @@ fn setup_playing_game() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) 
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_end_turn_switches_player() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
@@ -44,6 +45,7 @@ fn test_end_turn_switches_player() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_end_turn_round_increments() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
@@ -62,6 +64,7 @@ fn test_end_turn_round_increments() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_end_turn_resets_unit_flags() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
@@ -69,24 +72,28 @@ fn test_end_turn_resets_unit_flags() {
     actions_dispatcher.wait_unit(game_id, 1);
 
     let unit: Unit = world.read_model((game_id, 1_u8));
-    assert(unit.has_moved, 'should be moved');
-    assert(unit.has_acted, 'should have acted');
+    assert(unit.last_moved_round == 1, 'should be moved');
+    assert(unit.last_acted_round == 1, 'should have acted');
 
     // P1 ends turn
     actions_dispatcher.end_turn(game_id);
 
-    // P2 ends turn → back to P1, flags should be reset
+    // P2 ends turn → back to P1, round should be 2
     let p2 = PLAYER2();
     set_contract_address(p2);
     set_account_contract_address(p2);
     actions_dispatcher.end_turn(game_id);
 
+    let game: Game = world.read_model(game_id);
+    assert(game.round == 2, 'round should be 2');
+
     let unit: Unit = world.read_model((game_id, 1_u8));
-    assert(!unit.has_moved, 'moved should be reset');
-    assert(!unit.has_acted, 'acted should be reset');
+    assert(unit.last_moved_round < game.round, 'moved should be reset');
+    assert(unit.last_acted_round < game.round, 'acted should be reset');
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_end_turn_runs_production() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
@@ -123,6 +130,7 @@ fn test_end_turn_runs_production() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_end_turn_runs_income() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
@@ -155,6 +163,7 @@ fn test_end_turn_runs_income() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_end_turn_timeout() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
@@ -177,6 +186,7 @@ fn test_end_turn_timeout() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_end_turn_not_your_turn() {
     let (actions_dispatcher, _, game_id) = setup_playing_game();
 

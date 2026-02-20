@@ -27,6 +27,7 @@ fn create_test_game() -> (
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_join_game() {
     let (actions_dispatcher, mut world, game_id) = create_test_game();
 
@@ -49,6 +50,7 @@ fn test_join_game() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_join_game_spawns_units() {
     let (actions_dispatcher, mut world, game_id) = create_test_game();
 
@@ -82,6 +84,7 @@ fn test_join_game_spawns_units() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_join_game_assigns_hqs() {
     let (actions_dispatcher, mut world, game_id) = create_test_game();
 
@@ -101,6 +104,7 @@ fn test_join_game_assigns_hqs() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_join_game_runs_p1_income() {
     let (actions_dispatcher, mut world, game_id) = create_test_game();
 
@@ -116,6 +120,7 @@ fn test_join_game_runs_p1_income() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_join_game_already_joined() {
     let (actions_dispatcher, _, game_id) = create_test_game();
 
@@ -128,6 +133,7 @@ fn test_join_game_already_joined() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_join_game_full() {
     let (actions_dispatcher, _, game_id) = create_test_game();
 
@@ -146,6 +152,7 @@ fn test_join_game_full() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_join_game_already_playing() {
     let (actions_dispatcher, _, game_id) = create_test_game();
 

@@ -54,6 +54,7 @@ fn setup_capture() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_capture_first_step() {
     let (actions_dispatcher, mut world, game_id) = setup_capture();
 
@@ -66,10 +67,11 @@ fn test_capture_first_step() {
     assert(building.player_id == 0, 'still unowned');
 
     let unit: Unit = world.read_model((game_id, 1_u8));
-    assert(unit.has_acted, 'unit should have acted');
+    assert(unit.last_acted_round == 1, 'unit should have acted');
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_capture_completes() {
     let (actions_dispatcher, mut world, game_id) = setup_capture();
 
@@ -92,6 +94,7 @@ fn test_capture_completes() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_capture_hq_wins_game() {
     let p1 = PLAYER1();
     set_contract_address(p1);
@@ -130,6 +133,7 @@ fn test_capture_hq_wins_game() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_capture_enemy_building_updates_counts() {
     let p1 = PLAYER1();
     set_contract_address(p1);
@@ -185,6 +189,7 @@ fn test_capture_enemy_building_updates_counts() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_capture_not_infantry() {
     let (actions_dispatcher, mut world, game_id) = setup_capture();
 
@@ -198,6 +203,7 @@ fn test_capture_not_infantry() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_capture_no_building() {
     let p1 = PLAYER1();
     set_contract_address(p1);
@@ -221,6 +227,7 @@ fn test_capture_no_building() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_capture_own_building() {
     let p1 = PLAYER1();
     set_contract_address(p1);

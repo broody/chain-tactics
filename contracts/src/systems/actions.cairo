@@ -35,11 +35,9 @@ pub mod actions {
     use hashfront::helpers::{combat, game as game_helpers, map as map_helpers, unit_stats};
     use hashfront::models::building::Building;
     use hashfront::models::game::{Game, GameCounter};
-    use hashfront::models::map::{MapBuilding, MapInfo, MapTile, MapUnit};
-    use hashfront::models::player::PlayerState;
-    use hashfront::models::tile::Tile;
-    use hashfront::models::unit::{Unit, UnitImpl};
-    use hashfront::models::unit_position::UnitPosition;
+    use hashfront::models::map::{MapBuilding, MapInfo, MapTile, MapTileSeq, MapUnit};
+    use hashfront::models::player::{PlayerHQ, PlayerState};
+    use hashfront::models::unit::{Unit, UnitImpl, UnitPosition};
     use hashfront::types::{BuildingType, GameState, TileType, UnitType, Vec2};
     use starknet::get_caller_address;
     use super::IActions;
@@ -87,12 +85,10 @@ pub mod actions {
                 let tile_type: TileType = tile_val.into();
                 assert(tile_type != TileType::Grass, 'Grass tiles not allowed');
 
-                world
-                    .write_model(
-                        @MapTile {
-                            map_id, seq: i.try_into().unwrap(), index: grid_index, tile_type,
-                        },
-                    );
+                let (x, y) = map_helpers::index_to_xy(grid_index, width);
+                let seq: u16 = i.try_into().unwrap();
+                world.write_model(@MapTile { map_id, x, y, tile_type });
+                world.write_model(@MapTileSeq { map_id, seq, x, y, tile_type });
 
                 i += 1;
             }
@@ -201,20 +197,18 @@ pub mod actions {
                     },
                 );
 
-            // Copy tiles
-            let width = map_info.width;
-            let mut i: u16 = 0;
-            while i < map_info.tile_count {
-                let map_tile: MapTile = world.read_model((map_id, i));
-                let (x, y) = map_helpers::index_to_xy(map_tile.index, width);
-                world.write_model(@Tile { game_id, x, y, tile_type: map_tile.tile_type });
-                i += 1;
-            }
-
             // Copy buildings with ownership from template
             let mut j: u16 = 0;
             while j < map_info.building_count {
                 let mb: MapBuilding = world.read_model((map_id, j));
+
+                if mb.building_type == BuildingType::HQ {
+                    world
+                        .write_model(
+                            @PlayerHQ { game_id, player_id: mb.player_id, x: mb.x, y: mb.y },
+                        );
+                }
+
                 world
                     .write_model(
                         @Building {
@@ -323,7 +317,7 @@ pub mod actions {
             let mut unit: Unit = world.read_model((game_id, unit_id));
             assert(unit.is_alive, 'Unit is dead');
             assert(unit.player_id == game.current_player, 'Not your unit');
-            assert(!unit.has_moved, 'Already moved');
+            assert(unit.last_moved_round < game.round, 'Already moved');
 
             let path_span = path.span();
             assert(path_span.len() > 0, 'Empty path');
@@ -347,10 +341,12 @@ pub mod actions {
                     map_helpers::is_adjacent(prev_x, prev_y, step.x, step.y), 'Steps not adjacent',
                 );
 
-                let tile: Tile = world.read_model((game_id, step.x, step.y));
-                assert(unit_stats::can_traverse(unit.unit_type, tile.tile_type), 'Cannot traverse');
+                let map_tile: MapTile = world.read_model((game.map_id, step.x, step.y));
+                assert(
+                    unit_stats::can_traverse(unit.unit_type, map_tile.tile_type), 'Cannot traverse',
+                );
 
-                total_cost += unit_stats::move_cost(tile.tile_type);
+                total_cost += unit_stats::move_cost(map_tile.tile_type);
                 assert(total_cost <= max_move, 'Exceeds movement range');
 
                 if i + 1 < path_span.len() {
@@ -375,8 +371,20 @@ pub mod actions {
             let old_y = unit.y;
             unit.x = dest.x;
             unit.y = dest.y;
-            unit.has_moved = true;
+            unit.last_moved_round = game.round;
             world.write_model(@unit);
+
+            // Optimization: Reset capture if unit moves away
+            if unit.unit_type == UnitType::Infantry {
+                let mut old_building: Building = world.read_model((game_id, old_x, old_y));
+                if old_building.capture_player == game.current_player
+                    && old_building.capture_progress > 0 {
+                    old_building.capture_player = 0;
+                    old_building.capture_progress = 0;
+                    world.write_model(@old_building);
+                }
+            }
+
             world.write_model(@UnitPosition { game_id, x: old_x, y: old_y, unit_id: 0 });
             world.write_model(@UnitPosition { game_id, x: dest.x, y: dest.y, unit_id });
 
@@ -398,7 +406,7 @@ pub mod actions {
             let mut attacker: Unit = world.read_model((game_id, unit_id));
             assert(attacker.is_alive, 'Attacker is dead');
             assert(attacker.player_id == game.current_player, 'Not your unit');
-            assert(!attacker.has_acted, 'Already acted');
+            assert(attacker.last_acted_round < game.round, 'Already acted');
 
             let mut defender: Unit = world.read_model((game_id, target_id));
             assert(defender.is_alive, 'Target is dead');
@@ -411,13 +419,13 @@ pub mod actions {
             let max_range = unit_stats::max_attack_range(attacker.unit_type);
             assert(distance >= min_range && distance <= max_range, 'Out of attack range');
 
-            let defender_tile: Tile = world.read_model((game_id, defender.x, defender.y));
+            let map_tile: MapTile = world.read_model((game.map_id, defender.x, defender.y));
             let (dmg_to_def, dmg_to_atk) = combat::resolve_combat(
                 attacker.unit_type,
                 attacker.hp,
                 defender.unit_type,
                 defender.hp,
-                defender_tile.tile_type,
+                map_tile.tile_type,
                 distance,
             );
 
@@ -458,11 +466,11 @@ pub mod actions {
                     world.write_model(@atk_player);
                 } else {
                     attacker.hp -= dmg_to_atk;
-                    attacker.has_acted = true;
+                    attacker.last_acted_round = game.round;
                     world.write_model(@attacker);
                 }
             } else {
-                attacker.has_acted = true;
+                attacker.last_acted_round = game.round;
                 world.write_model(@attacker);
             }
 
@@ -495,7 +503,7 @@ pub mod actions {
             assert(unit.is_alive, 'Unit is dead');
             assert(unit.player_id == game.current_player, 'Not your unit');
             assert(unit.unit_type == UnitType::Infantry, 'Only infantry captures');
-            assert(!unit.has_acted, 'Already acted');
+            assert(unit.last_acted_round < game.round, 'Already acted');
 
             let mut building: Building = world.read_model((game_id, unit.x, unit.y));
             assert(building.building_type != BuildingType::None, 'No building here');
@@ -553,7 +561,7 @@ pub mod actions {
             }
 
             world.write_model(@building);
-            unit.has_acted = true;
+            unit.last_acted_round = game.round;
             world.write_model(@unit);
             world.write_model(@game);
         }
@@ -573,8 +581,8 @@ pub mod actions {
             assert(unit.is_alive, 'Unit is dead');
             assert(unit.player_id == game.current_player, 'Not your unit');
 
-            unit.has_moved = true;
-            unit.has_acted = true;
+            unit.last_moved_round = game.round;
+            unit.last_acted_round = game.round;
             world.write_model(@unit);
         }
 
@@ -632,9 +640,6 @@ pub mod actions {
             game_helpers::reset_stale_captures(
                 ref world, game_id, game.current_player, game.map_id,
             );
-            game_helpers::reset_unit_flags(
-                ref world, game_id, game.current_player, game.next_unit_id,
-            );
 
             let mut next = game.current_player;
             let mut new_round = game.round;
@@ -689,9 +694,10 @@ pub mod actions {
             let mut tiles: Array<u32> = array![];
             let mut i: u16 = 0;
             while i < map_info.tile_count {
-                let map_tile: MapTile = world.read_model((map_id, i));
+                let map_tile: MapTileSeq = world.read_model((map_id, i));
                 let tile_val: u8 = map_tile.tile_type.into();
-                let packed: u32 = map_tile.index.into() * 256 + tile_val.into();
+                let index = map_helpers::xy_to_index(map_tile.x, map_tile.y, map_info.width);
+                let packed: u32 = index.into() * 256 + tile_val.into();
                 tiles.append(packed);
                 i += 1;
             }

@@ -28,18 +28,20 @@ fn setup_playing_game() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) 
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_wait_unit() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
     actions_dispatcher.wait_unit(game_id, 1);
 
     let unit: Unit = world.read_model((game_id, 1_u8));
-    assert(unit.has_moved, 'should be moved');
-    assert(unit.has_acted, 'should have acted');
+    assert(unit.last_moved_round == 1, 'should be moved');
+    assert(unit.last_acted_round == 1, 'should have acted');
 }
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_wait_unit_not_your_turn() {
     let (actions_dispatcher, _, game_id) = setup_playing_game();
 
@@ -51,6 +53,7 @@ fn test_wait_unit_not_your_turn() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_wait_unit_not_your_unit() {
     let (actions_dispatcher, _, game_id) = setup_playing_game();
 

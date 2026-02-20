@@ -14,3 +14,14 @@ pub struct PlayerState {
     pub city_count: u8,
     pub is_alive: bool,
 }
+
+#[derive(Introspect, Serde, Drop, DojoStore)]
+#[dojo::model]
+pub struct PlayerHQ {
+    #[key]
+    pub game_id: u32,
+    #[key]
+    pub player_id: u8,
+    pub x: u8,
+    pub y: u8,
+}

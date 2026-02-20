@@ -52,6 +52,7 @@ fn setup_with_factory() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) 
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_build_infantry() {
     let (actions_dispatcher, mut world, game_id) = setup_with_factory();
 
@@ -66,6 +67,7 @@ fn test_build_infantry() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_build_tank() {
     let (actions_dispatcher, mut world, game_id) = setup_with_factory();
 
@@ -80,6 +82,7 @@ fn test_build_tank() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_build_ranger() {
     let (actions_dispatcher, mut world, game_id) = setup_with_factory();
 
@@ -95,6 +98,7 @@ fn test_build_ranger() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_build_unit_not_enough_gold() {
     let (actions_dispatcher, mut world, game_id) = setup_with_factory();
 
@@ -108,6 +112,7 @@ fn test_build_unit_not_enough_gold() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_build_unit_not_a_factory() {
     let (actions_dispatcher, _, game_id) = setup_with_factory();
 
@@ -117,6 +122,7 @@ fn test_build_unit_not_a_factory() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_build_unit_not_your_factory() {
     let (actions_dispatcher, mut world, game_id) = setup_with_factory();
 
@@ -130,6 +136,7 @@ fn test_build_unit_not_your_factory() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_build_unit_already_queued() {
     let (actions_dispatcher, _, game_id) = setup_with_factory();
 
@@ -140,6 +147,7 @@ fn test_build_unit_already_queued() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_build_unit_type_none() {
     let (actions_dispatcher, _, game_id) = setup_with_factory();
 

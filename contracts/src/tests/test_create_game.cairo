@@ -2,14 +2,15 @@ use dojo::model::ModelStorage;
 use hashfront::consts::STARTING_GOLD;
 use hashfront::models::building::Building;
 use hashfront::models::game::Game;
+use hashfront::models::map::{MapBuilding, MapInfo, MapTile, MapUnit};
 use hashfront::models::player::PlayerState;
-use hashfront::models::tile::Tile;
 use hashfront::systems::actions::IActionsDispatcherTrait;
 use hashfront::types::{BuildingType, GameState, TileType};
 use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, build_test_buildings, build_test_tiles, build_test_units, setup};
 
 #[test]
+#[available_gas(200000000)]
 fn test_create_game() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -53,16 +54,17 @@ fn test_create_game() {
     let grass_building: Building = world.read_model((game_id, 1_u8, 0_u8));
     assert(grass_building.building_type == BuildingType::None, 'grass has no building');
 
-    let grass_tile: Tile = world.read_model((game_id, 5_u8, 5_u8));
+    let grass_tile: MapTile = world.read_model((map_id, 5_u8, 5_u8));
     assert(grass_tile.tile_type == TileType::Grass, 'tile should be Grass');
 
     // Verify non-grass tile was written
-    let tile: Tile = world.read_model((game_id, 0_u8, 0_u8));
+    let tile: MapTile = world.read_model((map_id, 0_u8, 0_u8));
     assert(tile.tile_type == TileType::HQ, 'tile should be HQ');
 }
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_create_game_invalid_map() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -73,6 +75,7 @@ fn test_create_game_invalid_map() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_self_play_game() {
     let caller = PLAYER1();
     set_contract_address(caller);

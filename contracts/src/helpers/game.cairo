@@ -6,9 +6,8 @@ use hashfront::helpers::unit_stats;
 use hashfront::models::building::Building;
 use hashfront::models::game::Game;
 use hashfront::models::map::{MapBuilding, MapInfo, MapUnit};
-use hashfront::models::player::PlayerState;
-use hashfront::models::unit::{Unit, UnitImpl};
-use hashfront::models::unit_position::UnitPosition;
+use hashfront::models::player::{PlayerHQ, PlayerState};
+use hashfront::models::unit::{Unit, UnitImpl, UnitPosition};
 use hashfront::types::{BuildingType, GameState, UnitType};
 
 pub fn spawn_starting_units(
@@ -32,8 +31,8 @@ pub fn spawn_starting_units(
                     x: map_unit.x,
                     y: map_unit.y,
                     hp: unit_stats::max_hp(map_unit.unit_type),
-                    has_moved: false,
-                    has_acted: false,
+                    last_moved_round: 0,
+                    last_acted_round: 0,
                     is_alive: true,
                 },
             );
@@ -105,8 +104,8 @@ pub fn run_production(
                             x,
                             y,
                             hp: unit_stats::max_hp(ut),
-                            has_moved: true,
-                            has_acted: true,
+                            last_moved_round: game.round,
+                            last_acted_round: game.round,
                             is_alive: true,
                         },
                     );
@@ -124,23 +123,6 @@ pub fn run_production(
         let mut ps: PlayerState = world.read_model((game_id, player_id));
         ps.unit_count += produced;
         world.write_model(@ps);
-    };
-}
-
-pub fn reset_unit_flags(
-    ref world: dojo::world::WorldStorage, game_id: u32, player_id: u8, next_unit_id: u8,
-) {
-    let mut i: u8 = 1;
-    while i <= next_unit_id {
-        let mut u: Unit = world.read_model((game_id, i));
-        if u.is_alive && u.player_id == player_id {
-            if u.has_moved || u.has_acted {
-                u.has_moved = false;
-                u.has_acted = false;
-                world.write_model(@u);
-            }
-        }
-        i += 1;
     };
 }
 
@@ -173,17 +155,9 @@ pub fn check_elimination(
         return;
     }
 
-    let map_info: MapInfo = world.read_model(game.map_id);
-    let mut i: u16 = 0;
-    let mut has_hq = false;
-    while i < map_info.building_count {
-        let mb: MapBuilding = world.read_model((game.map_id, i));
-        let building: Building = world.read_model((game_id, mb.x, mb.y));
-        if building.building_type == BuildingType::HQ && building.player_id == player_id {
-            has_hq = true;
-        }
-        i += 1;
-    }
+    let phq: PlayerHQ = world.read_model((game_id, player_id));
+    let hq: Building = world.read_model((game_id, phq.x, phq.y));
+    let has_hq = hq.building_type == BuildingType::HQ && hq.player_id == player_id;
 
     let eliminated = !has_hq || (ps.unit_count == 0 && ps.factory_count == 0 && ps.gold == 0);
 

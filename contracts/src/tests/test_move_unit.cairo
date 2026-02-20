@@ -41,7 +41,7 @@ fn test_move_unit_one_step() {
     let unit: Unit = world.read_model((game_id, 1_u8));
     assert(unit.x == 2, 'x should be 2');
     assert(unit.y == 0, 'y should be 0');
-    assert(unit.has_moved, 'should be moved');
+    assert(unit.last_moved_round == 1, 'should be moved');
 }
 
 #[test]

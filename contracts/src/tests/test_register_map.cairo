@@ -1,11 +1,12 @@
 use dojo::model::ModelStorage;
-use hashfront::models::map::{MapInfo, MapTile, MapUnit};
+use hashfront::models::map::{MapBuilding, MapInfo, MapTile, MapTileSeq, MapUnit};
 use hashfront::systems::actions::IActionsDispatcherTrait;
 use hashfront::types::{TileType, UnitType};
 use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, build_test_buildings, build_test_tiles, build_test_units, setup};
 
 #[test]
+#[available_gas(200000000)]
 fn test_register_map() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -27,12 +28,12 @@ fn test_register_map() {
     assert(info.unit_count == 2, 'wrong unit_count');
 
     // Verify HQ tiles were written (keyed by seq)
-    let hq_tile: MapTile = world.read_model((map_id, 0_u16));
-    assert(hq_tile.index == 0, 'first tile index should be 0');
+    let hq_tile: MapTileSeq = world.read_model((map_id, 0_u16));
+    assert(hq_tile.x == 0 && hq_tile.y == 0, 'first tile should be 0,0');
     assert(hq_tile.tile_type == TileType::HQ, 'first tile should be HQ');
 
-    let hq_tile2: MapTile = world.read_model((map_id, 1_u16));
-    assert(hq_tile2.index == 399, 'second tile index should be 399');
+    let hq_tile2: MapTileSeq = world.read_model((map_id, 1_u16));
+    assert(hq_tile2.x == 19 && hq_tile2.y == 19, 'second tile should be 19,19');
     assert(hq_tile2.tile_type == TileType::HQ, 'second tile should be HQ');
 
     // Verify units were written
@@ -50,6 +51,7 @@ fn test_register_map() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_register_map_with_mixed_tiles() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -76,28 +78,28 @@ fn test_register_map_with_mixed_tiles() {
     let map_id = actions_dispatcher.register_map(20, 20, tiles, build_test_buildings(), units);
 
     // Verify stored tiles by seq
-    let t0: MapTile = world.read_model((map_id, 0_u16));
-    assert(t0.index == 0, 'idx 0');
+    let t0: MapTileSeq = world.read_model((map_id, 0_u16));
+    assert(t0.x == 0 && t0.y == 0, 'idx 0');
     assert(t0.tile_type == TileType::HQ, 'should be HQ');
 
-    let t1: MapTile = world.read_model((map_id, 1_u16));
-    assert(t1.index == 1, 'idx 1');
+    let t1: MapTileSeq = world.read_model((map_id, 1_u16));
+    assert(t1.x == 1 && t1.y == 0, 'idx 1');
     assert(t1.tile_type == TileType::Mountain, 'should be Mountain');
 
-    let t2: MapTile = world.read_model((map_id, 2_u16));
-    assert(t2.index == 2, 'idx 2');
+    let t2: MapTileSeq = world.read_model((map_id, 2_u16));
+    assert(t2.x == 2 && t2.y == 0, 'idx 2');
     assert(t2.tile_type == TileType::Factory, 'should be Factory');
 
-    let t3: MapTile = world.read_model((map_id, 3_u16));
-    assert(t3.index == 3, 'idx 3');
+    let t3: MapTileSeq = world.read_model((map_id, 3_u16));
+    assert(t3.x == 3 && t3.y == 0, 'idx 3');
     assert(t3.tile_type == TileType::City, 'should be City');
 
-    let t4: MapTile = world.read_model((map_id, 4_u16));
-    assert(t4.index == 4, 'idx 4');
+    let t4: MapTileSeq = world.read_model((map_id, 4_u16));
+    assert(t4.x == 4 && t4.y == 0, 'idx 4');
     assert(t4.tile_type == TileType::Road, 'should be Road');
 
-    let t5: MapTile = world.read_model((map_id, 5_u16));
-    assert(t5.index == 5, 'idx 5');
+    let t5: MapTileSeq = world.read_model((map_id, 5_u16));
+    assert(t5.x == 5 && t5.y == 0, 'idx 5');
     assert(t5.tile_type == TileType::Tree, 'should be Tree');
 
     // Verify units
@@ -110,6 +112,7 @@ fn test_register_map_with_mixed_tiles() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_register_map_too_few_hqs() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -123,6 +126,7 @@ fn test_register_map_too_few_hqs() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_register_map_too_many_hqs() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -140,6 +144,7 @@ fn test_register_map_too_many_hqs() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_register_map_out_of_bounds() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -152,6 +157,7 @@ fn test_register_map_out_of_bounds() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_register_map_grass_not_allowed() {
     let caller = PLAYER1();
     set_contract_address(caller);
@@ -164,6 +170,7 @@ fn test_register_map_grass_not_allowed() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_register_map_unit_invalid_player() {
     let caller = PLAYER1();
     set_contract_address(caller);

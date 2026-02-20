@@ -43,6 +43,7 @@ fn setup_combat() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_attack_both_survive() {
     let (actions_dispatcher, mut world, game_id) = setup_combat();
 
@@ -52,7 +53,7 @@ fn test_attack_both_survive() {
 
     let attacker: Unit = world.read_model((game_id, 1_u8));
     assert(attacker.hp == 1, 'attacker hp should be 1');
-    assert(attacker.has_acted, 'attacker should have acted');
+    assert(attacker.last_acted_round == 1, 'attacker should have acted');
     assert(attacker.is_alive, 'attacker should be alive');
 
     let defender: Unit = world.read_model((game_id, 2_u8));
@@ -61,6 +62,7 @@ fn test_attack_both_survive() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_attack_kills_defender() {
     let (actions_dispatcher, mut world, game_id) = setup_combat();
 
@@ -78,7 +80,7 @@ fn test_attack_kills_defender() {
 
     let attacker: Unit = world.read_model((game_id, 1_u8));
     assert(attacker.hp == 3, 'attacker full hp (no counter)');
-    assert(attacker.has_acted, 'attacker should have acted');
+    assert(attacker.last_acted_round == 1, 'attacker should have acted');
 
     // P2 unit count decremented
     let ps2: PlayerState = world.read_model((game_id, 2_u8));
@@ -86,6 +88,7 @@ fn test_attack_kills_defender() {
 }
 
 #[test]
+#[available_gas(200000000)]
 fn test_attack_counterattack_kills_attacker() {
     let (actions_dispatcher, mut world, game_id) = setup_combat();
 
@@ -112,6 +115,7 @@ fn test_attack_counterattack_kills_attacker() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_attack_out_of_range() {
     let p1 = PLAYER1();
     set_contract_address(p1);
@@ -135,6 +139,7 @@ fn test_attack_out_of_range() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_attack_own_unit() {
     let (actions_dispatcher, _, game_id) = setup_combat();
 
@@ -144,6 +149,7 @@ fn test_attack_own_unit() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_attack_not_your_turn() {
     let (actions_dispatcher, _, game_id) = setup_combat();
 
@@ -156,6 +162,7 @@ fn test_attack_not_your_turn() {
 
 #[test]
 #[should_panic]
+#[available_gas(200000000)]
 fn test_attack_already_acted() {
     let (actions_dispatcher, _, game_id) = setup_combat();
 

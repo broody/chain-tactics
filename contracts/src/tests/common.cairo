@@ -6,11 +6,9 @@ use dojo_cairo_test::{
 use hashfront::events as events;
 use hashfront::models::building::m_Building;
 use hashfront::models::game::{m_Game, m_GameCounter};
-use hashfront::models::map::{m_MapBuilding, m_MapInfo, m_MapTile, m_MapUnit};
-use hashfront::models::player::m_PlayerState;
-use hashfront::models::tile::m_Tile;
-use hashfront::models::unit::m_Unit;
-use hashfront::models::unit_position::m_UnitPosition;
+use hashfront::models::map::{m_MapBuilding, m_MapInfo, m_MapTile, m_MapTileSeq, m_MapUnit};
+use hashfront::models::player::{m_PlayerHQ, m_PlayerState};
+use hashfront::models::unit::{m_Unit, m_UnitPosition};
 use hashfront::systems::actions::{IActionsDispatcher, actions};
 use starknet::ContractAddress;
 
@@ -30,10 +28,11 @@ fn namespace_def() -> NamespaceDef {
             TestResource::Model(m_Game::TEST_CLASS_HASH),
             TestResource::Model(m_MapInfo::TEST_CLASS_HASH),
             TestResource::Model(m_MapTile::TEST_CLASS_HASH),
+            TestResource::Model(m_MapTileSeq::TEST_CLASS_HASH),
             TestResource::Model(m_MapBuilding::TEST_CLASS_HASH),
             TestResource::Model(m_MapUnit::TEST_CLASS_HASH),
             TestResource::Model(m_PlayerState::TEST_CLASS_HASH),
-            TestResource::Model(m_Tile::TEST_CLASS_HASH),
+            TestResource::Model(m_PlayerHQ::TEST_CLASS_HASH),
             TestResource::Model(m_Building::TEST_CLASS_HASH),
             TestResource::Model(m_Unit::TEST_CLASS_HASH),
             TestResource::Model(m_UnitPosition::TEST_CLASS_HASH),

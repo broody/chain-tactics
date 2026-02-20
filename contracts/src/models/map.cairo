@@ -19,8 +19,21 @@ pub struct MapTile {
     #[key]
     pub map_id: u8,
     #[key]
+    pub x: u8,
+    #[key]
+    pub y: u8,
+    pub tile_type: TileType,
+}
+
+#[derive(Introspect, Serde, Drop, DojoStore)]
+#[dojo::model]
+pub struct MapTileSeq {
+    #[key]
+    pub map_id: u8,
+    #[key]
     pub seq: u16,
-    pub index: u16,
+    pub x: u8,
+    pub y: u8,
     pub tile_type: TileType,
 }
 

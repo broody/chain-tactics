@@ -1,5 +1,4 @@
 use dojo::model::ModelStorage;
-use hashfront::models::unit_position::UnitPosition;
 use hashfront::types::UnitType;
 
 #[derive(Introspect, Serde, Drop, DojoStore)]
@@ -14,9 +13,21 @@ pub struct Unit {
     pub x: u8,
     pub y: u8,
     pub hp: u8,
-    pub has_moved: bool,
-    pub has_acted: bool,
+    pub last_moved_round: u8,
+    pub last_acted_round: u8,
     pub is_alive: bool,
+}
+
+#[derive(Introspect, Serde, Drop, DojoStore)]
+#[dojo::model]
+pub struct UnitPosition {
+    #[key]
+    pub game_id: u32,
+    #[key]
+    pub x: u8,
+    #[key]
+    pub y: u8,
+    pub unit_id: u8,
 }
 
 #[generate_trait]
