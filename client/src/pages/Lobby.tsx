@@ -6,6 +6,7 @@ import {
   useProvider,
   useSendTransaction,
 } from "@starknet-react/core";
+import { byteArray } from "starknet";
 import { lookupAddresses } from "@cartridge/controller";
 import { ControllerConnector } from "@cartridge/connector";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -152,8 +153,11 @@ const ECGMonitor = ({
             fill="none"
             stroke="rgba(255, 255, 255, 0.5)"
             strokeWidth="1.2"
-            className="animate-ecg-glow"
-            style={{ animationDuration: `${scrollDuration * 0.5}s` }}
+            className="animate-ecg-glow flicker-text"
+            style={{ 
+              animationDuration: `${scrollDuration * 0.5}s`,
+              animationDelay: `-${(randomDelay * 0.8) % 5}s`
+            }}
           />
         </svg>
       </div>
@@ -235,7 +239,12 @@ export default function Lobby() {
         {
           contractAddress: ACTIONS_ADDRESS,
           entrypoint: "create_game",
-          calldata: [mapId.toString(), selectedPlayerId.toString(), "1"],
+          calldata: [
+            ...byteArray.byteArrayFromString(operationName.trim()),
+            mapId.toString(),
+            selectedPlayerId.toString(),
+            "1",
+          ],
         },
       ]);
 
@@ -1019,7 +1028,7 @@ export default function Lobby() {
                 </div>
 
                 <label className="text-xs uppercase tracking-widest flex flex-col gap-2">
-                  OPERATION NAME (PLACEHOLDER)
+                  OPERATION NAME
                   <input
                     value={operationName}
                     onChange={(e) => setOperationName(e.target.value)}
@@ -1143,7 +1152,7 @@ export default function Lobby() {
                     variant="green"
                     onClick={handleConfirmDeploy}
                     disabled={
-                      isDeploying || !selectedMapInfo || !selectedPlayerId
+                      isDeploying || !selectedMapInfo || !selectedPlayerId || !operationName.trim()
                     }
                     className="flex items-center gap-2"
                   >

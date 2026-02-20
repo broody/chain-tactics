@@ -302,7 +302,6 @@ a {
 .animate-ecg-sweep {
   animation: ecg-sweep 2s linear infinite;
 }
-
 ::-webkit-scrollbar {
   width: 8px;
 }
