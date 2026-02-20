@@ -16,9 +16,9 @@ export const BlueprintContainer: React.FC<BlueprintContainerProps> = ({
           REF_ID: 0x8829-HF // AREA: {Math.floor(Math.random() * 1000)}
         </div>
         <div className="absolute bottom-2 right-10 text-[10px] opacity-30 font-mono tracking-widest hidden md:block">
-          LONG: 122.4194 W // LAT: 37.7749 N
+          LONG: 157.8583 W // LAT: 21.3069 N
         </div>
-        
+
         {/* Corner Markers */}
         <div className="absolute w-[25px] h-[25px] border-[4px] border-white top-[-4px] left-[-4px] border-r-0 border-b-0"></div>
         <div className="absolute w-[25px] h-[25px] border-[4px] border-white top-[-4px] right-[-4px] border-l-0 border-b-0"></div>

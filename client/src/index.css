@@ -20,7 +20,7 @@
   --bp-blue: #003366;
   --bp-dark: #001a33;
   --bp-line: #ffffff;
-  --bp-grid: rgba(255, 255, 255, 0.15);
+  --bp-grid: rgba(255, 255, 255, 0.07);
   --crt-glow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
@@ -67,22 +67,48 @@
 }
 
 @keyframes noise-anim {
-  0% { transform: translate(0, 0); }
-  10% { transform: translate(-5%, -5%); }
-  20% { transform: translate(-10%, 5%); }
-  30% { transform: translate(5%, -10%); }
-  40% { transform: translate(-5%, 15%); }
-  50% { transform: translate(-10%, 5%); }
-  60% { transform: translate(15%, 0); }
-  70% { transform: translate(0, 10%); }
-  80% { transform: translate(-15%, 0); }
-  90% { transform: translate(10%, 5%); }
-  100% { transform: translate(5%, 0); }
+  0% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-5%, -5%);
+  }
+  20% {
+    transform: translate(-10%, 5%);
+  }
+  30% {
+    transform: translate(5%, -10%);
+  }
+  40% {
+    transform: translate(-5%, 15%);
+  }
+  50% {
+    transform: translate(-10%, 5%);
+  }
+  60% {
+    transform: translate(15%, 0);
+  }
+  70% {
+    transform: translate(0, 10%);
+  }
+  80% {
+    transform: translate(-15%, 0);
+  }
+  90% {
+    transform: translate(10%, 5%);
+  }
+  100% {
+    transform: translate(5%, 0);
+  }
 }
 
 @keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(1000%); }
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
 }
 
 .flicker-text {
@@ -90,11 +116,23 @@
 }
 
 @keyframes flicker-text-anim {
-  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+  0%,
+  19.999%,
+  22%,
+  62.999%,
+  64%,
+  64.999%,
+  70%,
+  100% {
     opacity: 1;
     text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
   }
-  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+  20%,
+  21.999%,
+  63%,
+  63.999%,
+  65%,
+  69.999% {
     opacity: 0.8;
     text-shadow: none;
   }
@@ -218,20 +256,39 @@ a {
 }
 
 @keyframes ecg-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes ecg-sweep {
-  0% { transform: translateX(-100%); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { transform: translateX(1600%); opacity: 0; }
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(1600%);
+    opacity: 0;
+  }
 }
 
 @keyframes ecg-glow {
-  0%, 100% { filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.2)); }
-  50% { filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.4)); }
+  0%,
+  100% {
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.2));
+  }
+  50% {
+    filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.4));
+  }
 }
 
 .animate-ecg-scroll {

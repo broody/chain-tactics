@@ -110,33 +110,40 @@ function shortTxHash(txHash: string): string {
   return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
 }
 
-const ECGMonitor = ({ playerCount = 1, gameId = 0 }: { playerCount: number; gameId: number }) => {
+const ECGMonitor = ({
+  playerCount = 1,
+  gameId = 0,
+}: {
+  playerCount: number;
+  gameId: number;
+}) => {
   const pulses = Math.max(1, playerCount);
   // Slower scroll speed: 1p=6s, 4p=1.5s approx
   const scrollDuration = Math.max(1.5, 7.5 - pulses * 1.5);
-  
+
   // Use a more complex prime-based offset for better "randomness"
   // (gameId * a_prime + some_other_prime) % scrollDuration
-  const randomDelay = ((gameId * 37.7) + 13.3) % scrollDuration;
-  
+  const randomDelay = (gameId * 37.7 + 13.3) % scrollDuration;
+
   return (
     <div className="relative w-16 h-16 border border-white/10 bg-blueprint-dark/40 overflow-hidden rounded group">
       {/* Background Grid */}
-      <div 
+      <div
         className="absolute inset-0 opacity-10"
         style={{
-          backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)",
-          backgroundSize: "4px 4px"
+          backgroundImage:
+            "linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)",
+          backgroundSize: "4px 4px",
         }}
       />
-      
+
       <div className="absolute inset-0 flex items-center">
-        <svg 
-          viewBox="0 0 160 40" 
+        <svg
+          viewBox="0 0 160 40"
           className="h-full shrink-0 animate-ecg-scroll"
-          style={{ 
+          style={{
             animationDuration: `${scrollDuration}s`,
-            animationDelay: `-${randomDelay}s`
+            animationDelay: `-${randomDelay}s`,
           }}
         >
           {/* Repeating heartbeat path - 2 segments to allow continuous scroll */}
@@ -150,13 +157,13 @@ const ECGMonitor = ({ playerCount = 1, gameId = 0 }: { playerCount: number; game
           />
         </svg>
       </div>
-      
+
       {/* Realistic CRT Beam */}
-      <div 
+      <div
         className="absolute top-0 bottom-0 w-12 animate-ecg-sweep pointer-events-none"
-        style={{ 
+        style={{
           animationDuration: `${scrollDuration * 2}s`,
-          animationDelay: `-${(randomDelay * 1.3) % (scrollDuration * 2)}s`
+          animationDelay: `-${(randomDelay * 1.3) % (scrollDuration * 2)}s`,
         }}
       >
         {/* Leading sharp line */}
@@ -164,7 +171,7 @@ const ECGMonitor = ({ playerCount = 1, gameId = 0 }: { playerCount: number; game
         {/* Trailing phosphor decay */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-white/10" />
       </div>
-      
+
       {/* Pulse status indicator */}
       <div className="absolute bottom-1 right-1 text-[7px] font-mono text-white/20 leading-none uppercase">
         VITAL_{pulses > 1 ? "MULT" : "STABLE"}
@@ -587,31 +594,73 @@ export default function Lobby() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-[3px] border-white pb-5 mb-2 relative overflow-hidden">
         {/* Decorative Background SVG for Header */}
         <div className="absolute right-0 top-0 h-full w-1/2 opacity-10 pointer-events-none">
-          <svg width="100%" height="100%" viewBox="0 0 400 100" preserveAspectRatio="none">
-            <path d="M0,50 L400,50 M0,20 L400,20 M0,80 L400,80" stroke="white" strokeWidth="1" strokeDasharray="10,5" />
-            <circle cx="350" cy="50" r="30" stroke="white" strokeWidth="1" fill="none" />
-            <path d="M350,20 L350,80 M320,50 L380,50" stroke="white" strokeWidth="1" />
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 400 100"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0,50 L400,50 M0,20 L400,20 M0,80 L400,80"
+              stroke="white"
+              strokeWidth="1"
+              strokeDasharray="10,5"
+            />
+            <circle
+              cx="350"
+              cy="50"
+              r="30"
+              stroke="white"
+              strokeWidth="1"
+              fill="none"
+            />
+            <path
+              d="M350,20 L350,80 M320,50 L380,50"
+              stroke="white"
+              strokeWidth="1"
+            />
           </svg>
         </div>
 
         <div className="relative z-10 flex items-center gap-4">
           <div className="hidden md:block">
-            <svg width="60" height="60" viewBox="0 0 40 40" className="flicker-text">
-              <g transform="skewX(-15) skewY(5) scale(0.9)" transform-origin="center">
+            <svg
+              width="60"
+              height="60"
+              viewBox="0 0 40 40"
+              className="flicker-text"
+            >
+              <g
+                transform="skewX(-15) skewY(5) scale(0.9)"
+                transform-origin="center"
+              >
                 <g stroke="white" fill="none" strokeWidth="2">
                   <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />
                 </g>
-                <g stroke="white" fill="none" strokeWidth="0.5" opacity="0.3" transform="translate(4,4)">
+                <g
+                  stroke="white"
+                  fill="none"
+                  strokeWidth="0.5"
+                  opacity="0.3"
+                  transform="translate(4,4)"
+                >
                   <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />
                 </g>
               </g>
               {/* Framing corners */}
-              <path d="M2 2 H8 M2 2 V8 M32 2 H38 M38 2 V8 M2 38 H8 M2 38 V32 M32 38 H38 M38 38 V32" stroke="white" strokeWidth="0.5" />
+              <path
+                d="M2 2 H8 M2 2 V8 M32 2 H38 M38 2 V8 M2 38 H8 M2 38 V32 M32 38 H38 M38 38 V32"
+                stroke="white"
+                strokeWidth="0.5"
+              />
             </svg>
           </div>
           <div>
             <h1 className="text-2xl md:text-4xl font-bold tracking-[4px] m-0 flex items-center gap-2 flicker-text">
-              HASHFRONT <span className="text-xs font-normal border border-white px-1 animate-pulse">LIVE</span>
+              HASHFRONT{" "}
+              <span className="text-xs font-normal border border-white px-1 animate-pulse">
+                LIVE
+              </span>
             </h1>
             <div className="text-sm mt-1 opacity-80 font-mono">
               &gt; SYSTEM_READY // LATENCY: 24ms // SECTOR: 0x7A
@@ -667,15 +716,20 @@ export default function Lobby() {
                 const isPlaying = state === "Playing";
                 const isJoiningThisGame = joiningGameId === gameId;
                 const actionLabel = isLobby ? "JOIN" : "WATCH_FEED";
-                
+
                 return (
                   <div
                     key={gameId}
                     className="border-b-2 border-dashed border-white py-6 grid grid-cols-[50px_70px_1fr_180px] items-center gap-4 hover:bg-white/10 transition-colors relative"
                   >
-                    <div className="text-sm opacity-50 font-mono">#{gameId}</div>
+                    <div className="text-sm opacity-50 font-mono">
+                      #{gameId}
+                    </div>
                     <div className="flex items-center">
-                      <ECGMonitor playerCount={toNumber(game.num_players)} gameId={gameId} />
+                      <ECGMonitor
+                        playerCount={toNumber(game.num_players)}
+                        gameId={gameId}
+                      />
                     </div>
                     <div>
                       <div className="text-lg font-bold flex items-center gap-2">
@@ -685,8 +739,17 @@ export default function Lobby() {
                         )}
                       </div>
                       <div className="text-xs mt-1 uppercase opacity-80 flex flex-col gap-1">
-                        <div>STATUS: {statusLabel} // SLOTS: {toNumber(game.num_players)}/{toNumber(game.player_count)}</div>
-                        <div>MAP: {toNumber(game.map_id)} // {isPlaying ? `ROUND: ${toNumber(game.round)}` : "PREPARING..."}</div>
+                        <div>
+                          STATUS: {statusLabel} // SLOTS:{" "}
+                          {toNumber(game.num_players)}/
+                          {toNumber(game.player_count)}
+                        </div>
+                        <div>
+                          MAP: {toNumber(game.map_id)} //{" "}
+                          {isPlaying
+                            ? `ROUND: ${toNumber(game.round)}`
+                            : "PREPARING..."}
+                        </div>
                       </div>
                     </div>
                     {isLobby ? (
@@ -741,11 +804,48 @@ export default function Lobby() {
           <PixelPanel title="System Nav" className="relative">
             <div className="absolute top-2 right-2 opacity-20 hidden lg:block">
               <svg width="60" height="60" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" stroke="white" strokeWidth="1" fill="none" />
-                <circle cx="50" cy="50" r="30" stroke="white" strokeWidth="1" fill="none" opacity="0.5" />
-                <circle cx="50" cy="50" r="15" stroke="white" strokeWidth="1" fill="none" opacity="0.3" />
-                <line x1="50" y1="50" x2="50" y2="5" stroke="white" strokeWidth="2" className="origin-center animate-[spin_4s_linear_infinite]" />
-                <circle cx="70" cy="30" r="3" fill="white" className="animate-pulse" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="white"
+                  strokeWidth="1"
+                  fill="none"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="30"
+                  stroke="white"
+                  strokeWidth="1"
+                  fill="none"
+                  opacity="0.5"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="15"
+                  stroke="white"
+                  strokeWidth="1"
+                  fill="none"
+                  opacity="0.3"
+                />
+                <line
+                  x1="50"
+                  y1="50"
+                  x2="50"
+                  y2="5"
+                  stroke="white"
+                  strokeWidth="2"
+                  className="origin-center animate-[spin_4s_linear_infinite]"
+                />
+                <circle
+                  cx="70"
+                  cy="30"
+                  r="3"
+                  fill="white"
+                  className="animate-pulse"
+                />
                 <circle cx="40" cy="70" r="2" fill="white" opacity="0.5" />
               </svg>
             </div>
@@ -766,7 +866,10 @@ export default function Lobby() {
                 to="/logo-gallery"
                 className="hover:translate-x-2 transition-transform flex items-center gap-2 text-green-400"
               >
-                <span>&gt;</span> LOGO_LAB <span className="text-[10px] border border-green-400 px-1">NEW</span>
+                <span>&gt;</span> LOGO_LAB{" "}
+                <span className="text-[10px] border border-green-400 px-1">
+                  NEW
+                </span>
               </Link>
               <a
                 href="#"
@@ -776,7 +879,10 @@ export default function Lobby() {
                   toast("Access denied", "error");
                 }}
               >
-                <span>&gt;</span> MAP_EDITOR <span className="text-[10px] border border-white/30 px-1">LOCKED</span>
+                <span>&gt;</span> MAP_EDITOR{" "}
+                <span className="text-[10px] border border-white/30 px-1">
+                  LOCKED
+                </span>
               </a>
               <a
                 href="#"
@@ -795,55 +901,67 @@ export default function Lobby() {
             <div className="text-base space-y-4">
               <div className="flex justify-between items-end border-b border-white/10 pb-2">
                 <div className="flex flex-col">
-                  <span className="text-xs opacity-50 uppercase tracking-tighter">IN_PROGRESS</span>
+                  <span className="text-xs opacity-50 uppercase tracking-tighter">
+                    IN_PROGRESS
+                  </span>
                   <span className="font-bold text-xl">342</span>
                 </div>
                 <div className="h-8 w-16">
-                  <svg 
-                    viewBox="0 0 100 40" 
+                  <svg
+                    viewBox="0 0 100 40"
                     className="h-full w-full stroke-blue-400 flicker-text"
                     style={{ animationDelay: "-1.2s" }}
                   >
-                    <path d="M0,35 L20,30 L40,35 L60,15 L80,25 L100,5" fill="none" strokeWidth="2" />
+                    <path
+                      d="M0,35 L20,30 L40,35 L60,15 L80,25 L100,5"
+                      fill="none"
+                      strokeWidth="2"
+                    />
                   </svg>
                 </div>
               </div>
               <div className="flex justify-between items-end border-b border-white/10 pb-2">
                 <div className="flex flex-col">
-                  <span className="text-xs opacity-50 uppercase tracking-tighter">COMPLETED</span>
+                  <span className="text-xs opacity-50 uppercase tracking-tighter">
+                    COMPLETED
+                  </span>
                   <span className="font-bold text-xl">1420</span>
                 </div>
                 <div className="h-8 w-16">
-                  <svg 
-                    viewBox="0 0 100 40" 
+                  <svg
+                    viewBox="0 0 100 40"
                     className="h-full w-full stroke-green-400 flicker-text"
                     style={{ animationDelay: "-3.7s" }}
                   >
-                    <path d="M0,35 L20,25 L40,30 L60,10 L80,15 L100,5" fill="none" strokeWidth="2" />
+                    <path
+                      d="M0,35 L20,25 L40,30 L60,10 L80,15 L100,5"
+                      fill="none"
+                      strokeWidth="2"
+                    />
                   </svg>
                 </div>
               </div>
               <div className="flex justify-between items-end border-b border-white/10 pb-2">
                 <div className="flex flex-col">
-                  <span className="text-xs opacity-50 uppercase tracking-tighter">TRANSACTIONS</span>
+                  <span className="text-xs opacity-50 uppercase tracking-tighter">
+                    TRANSACTIONS
+                  </span>
                   <span className="font-bold text-xl">12K</span>
                 </div>
                 <div className="h-8 w-16">
-                  <svg 
-                    viewBox="0 0 100 40" 
+                  <svg
+                    viewBox="0 0 100 40"
                     className="h-full w-full stroke-white/50 flicker-text"
                     style={{ animationDelay: "-2.1s" }}
                   >
-                    <path d="M0,30 L20,32 L40,28 L60,35 L80,25 L100,20" fill="none" strokeWidth="2" />
+                    <path
+                      d="M0,30 L20,32 L40,28 L60,35 L80,25 L100,20"
+                      fill="none"
+                      strokeWidth="2"
+                    />
                   </svg>
                 </div>
               </div>
-            </div>
-            
-            <div className="mt-4 p-2 bg-white/5 border border-white/10 text-[10px] font-mono leading-tight opacity-70">
-              [LOG_INFO]: CARGO_INIT_COMPLETE <br/>
-              [LOG_INFO]: DOJO_WORLD_CONNECTED <br/>
-              [LOG_INFO]: KATANA_SYNC_SUCCESS
             </div>
           </PixelPanel>
         </div>

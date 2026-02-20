@@ -194,15 +194,28 @@ const HUD = () => {
         <div className="flex items-center gap-4">
           <div className="flicker-text scale-75">
             <svg width="40" height="40" viewBox="0 0 40 40">
-              <g transform="skewX(-15) skewY(5) scale(0.9)" transform-origin="center">
+              <g
+                transform="skewX(-15) skewY(5) scale(0.9)"
+                transform-origin="center"
+              >
                 <g stroke="white" fill="none" strokeWidth="2">
                   <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />
                 </g>
-                <g stroke="white" fill="none" strokeWidth="0.5" opacity="0.3" transform="translate(4,4)">
+                <g
+                  stroke="white"
+                  fill="none"
+                  strokeWidth="0.5"
+                  opacity="0.3"
+                  transform="translate(4,4)"
+                >
                   <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />
                 </g>
               </g>
-              <path d="M2 2 H8 M2 2 V8 M32 2 H38 M38 2 V8 M2 38 H8 M2 38 V32 M32 38 H38 M38 38 V32" stroke="white" strokeWidth="0.5" />
+              <path
+                d="M2 2 H8 M2 2 V8 M32 2 H38 M38 2 V8 M2 38 H8 M2 38 V32 M32 38 H38 M38 38 V32"
+                stroke="white"
+                strokeWidth="0.5"
+              />
             </svg>
           </div>
           <span className="text-base font-bold tracking-[2px] uppercase">
