@@ -6,7 +6,7 @@ import {
   useProvider,
   useSendTransaction,
 } from "@starknet-react/core";
-import { byteArray } from "starknet";
+import { shortString } from "starknet";
 import { lookupAddresses } from "@cartridge/controller";
 import { ControllerConnector } from "@cartridge/connector";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -244,12 +244,15 @@ export default function Lobby() {
     setIsDeploying(true);
     try {
       toast("Submitting deployment...", "info");
+      const trimmedName = operationName.trim();
       const tx = await sendTransaction([
         {
           contractAddress: ACTIONS_ADDRESS,
           entrypoint: "create_game",
           calldata: [
-            ...byteArray.byteArrayFromString(operationName.trim()),
+            "0", // ByteArray data.len
+            shortString.encodeShortString(trimmedName.slice(0, 31)), // pending_word
+            trimmedName.length.toString(), // pending_word_len
             mapId.toString(),
             selectedPlayerId.toString(),
             "1",
@@ -1040,7 +1043,7 @@ export default function Lobby() {
                   OPERATION NAME
                   <input
                     value={operationName}
-                    onChange={(e) => setOperationName(e.target.value)}
+                    onChange={(e) => setOperationName(e.target.value.slice(0, 31))}
                     placeholder="e.g. Iron Ridge Offensive"
                     className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none tracking-wide"
                     disabled={isDeploying}
