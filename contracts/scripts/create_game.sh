@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROFILE=""
+PROFILE="sepolia"
 MAP_ID=""
-PLAYER_ID="2"
+PLAYER_ID="1"
 TEST_MODE="1"
 
 while [[ $# -gt 0 ]]; do
@@ -24,7 +24,7 @@ while [[ $# -gt 0 ]]; do
       if [ -z "$MAP_ID" ]; then
         MAP_ID="$1"
       else
-        echo "Usage: $0 [--profile <profile>] [--player <player_id>] [--no-test] <map_id>" >&2
+        echo "Usage: $0 [--profile <profile>] [--player <player_id>] [--no-test] <map_id> (default profile: sepolia)" >&2
         exit 1
       fi
       shift
@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$MAP_ID" ]; then
-  echo "Usage: $0 [--profile <profile>] [--player <player_id>] [--no-test] <map_id>" >&2
+  echo "Usage: $0 [--profile <profile>] [--player <player_id>] [--no-test] <map_id> (default profile: sepolia)" >&2
   exit 1
 fi
 

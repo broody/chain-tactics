@@ -93,11 +93,11 @@ fn test_join_game_assigns_hqs() {
     // HQs should be assigned to players
     let hq1: Building = world.read_model((game_id, 0_u8, 0_u8));
     assert(hq1.building_type == BuildingType::HQ, 'should be HQ');
-    assert(hq1.owner == 1, 'HQ1 owned by p1');
+    assert(hq1.player_id == 1, 'HQ1 owned by p1');
 
     let hq2: Building = world.read_model((game_id, 19_u8, 19_u8));
     assert(hq2.building_type == BuildingType::HQ, 'should be HQ');
-    assert(hq2.owner == 2, 'HQ2 owned by p2');
+    assert(hq2.player_id == 2, 'HQ2 owned by p2');
 }
 
 #[test]

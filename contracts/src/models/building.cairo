@@ -10,7 +10,7 @@ pub struct Building {
     #[key]
     pub y: u8,
     pub building_type: BuildingType,
-    pub owner: u8,
+    pub player_id: u8,
     pub capture_player: u8,
     pub capture_progress: u8,
     pub queued_unit: u8,

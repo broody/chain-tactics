@@ -34,7 +34,7 @@ fn setup_capture() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) {
                 x: 10,
                 y: 10,
                 building_type: BuildingType::City,
-                owner: 0,
+                player_id: 0,
                 capture_player: 0,
                 capture_progress: 0,
                 queued_unit: 0,
@@ -63,7 +63,7 @@ fn test_capture_first_step() {
     let building: Building = world.read_model((game_id, 10_u8, 10_u8));
     assert(building.capture_player == 1, 'capture_player should be 1');
     assert(building.capture_progress == 1, 'progress should be 1');
-    assert(building.owner == 0, 'still unowned');
+    assert(building.player_id == 0, 'still unowned');
 
     let unit: Unit = world.read_model((game_id, 1_u8));
     assert(unit.has_acted, 'unit should have acted');
@@ -82,7 +82,7 @@ fn test_capture_completes() {
     actions_dispatcher.capture(game_id, 1);
 
     let building: Building = world.read_model((game_id, 10_u8, 10_u8));
-    assert(building.owner == 1, 'P1 should own city');
+    assert(building.player_id == 1, 'P1 should own city');
     assert(building.capture_player == 0, 'capture_player reset');
     assert(building.capture_progress == 0, 'progress reset');
 
@@ -153,7 +153,7 @@ fn test_capture_enemy_building_updates_counts() {
                 x: 10,
                 y: 10,
                 building_type: BuildingType::Factory,
-                owner: 2,
+                player_id: 2,
                 capture_player: 1,
                 capture_progress: 1,
                 queued_unit: 0,

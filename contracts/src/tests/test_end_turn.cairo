@@ -98,7 +98,7 @@ fn test_end_turn_runs_production() {
                 x: 15,
                 y: 15,
                 building_type: BuildingType::Factory,
-                owner: 2,
+                player_id: 2,
                 capture_player: 0,
                 capture_progress: 0,
                 queued_unit: 1 // Infantry
@@ -134,7 +134,7 @@ fn test_end_turn_runs_income() {
                 x: 12,
                 y: 12,
                 building_type: BuildingType::City,
-                owner: 2,
+                player_id: 2,
                 capture_player: 0,
                 capture_progress: 0,
                 queued_unit: 0,

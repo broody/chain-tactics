@@ -53,8 +53,8 @@ pub fn count_player_buildings(
         let mut x: u8 = 0;
         while x < width {
             let building: Building = world.read_model((game_id, x, y));
-            if building.owner != 0 {
-                let mut ps: PlayerState = world.read_model((game_id, building.owner));
+            if building.player_id != 0 {
+                let mut ps: PlayerState = world.read_model((game_id, building.player_id));
                 if building.building_type == BuildingType::Factory {
                     ps.factory_count += 1;
                 } else if building.building_type == BuildingType::City {
@@ -84,7 +84,7 @@ pub fn run_production(
         while x < game.width {
             let mut building: Building = world.read_model((game_id, x, y));
             if building.building_type == BuildingType::Factory
-                && building.owner == player_id
+                && building.player_id == player_id
                 && building.queued_unit != 0 {
                 if !UnitImpl::exists_at(ref world, game_id, x, y, game.next_unit_id) {
                     let ut: UnitType = building.queued_unit.into();
@@ -171,7 +171,7 @@ pub fn check_elimination(
         let mut x: u8 = 0;
         while x < game.width {
             let building: Building = world.read_model((game_id, x, y));
-            if building.building_type == BuildingType::HQ && building.owner == player_id {
+            if building.building_type == BuildingType::HQ && building.player_id == player_id {
                 has_hq = true;
             }
             x += 1;

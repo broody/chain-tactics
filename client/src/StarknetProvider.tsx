@@ -7,7 +7,7 @@ import { shortString } from "starknet";
 
 // TODO: set to deployed contract address
 export const ACTIONS_ADDRESS =
-  "0x0605d3a4a0e4f42898b22e250ba126ce7359b3a823b1ce8e6c2e4c9925458f5b";
+  "0x07739c5dcc89dbcffe817b970224e4d2b39e43e5f612e228d0dd9b911d816682";
 
 const policies: SessionPolicies = {
   contracts: {

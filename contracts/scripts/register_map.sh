@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROFILE=""
+PROFILE="sepolia"
 MAP_FILE=""
 
 while [[ $# -gt 0 ]]; do
@@ -14,7 +14,7 @@ while [[ $# -gt 0 ]]; do
       if [ -z "$MAP_FILE" ]; then
         MAP_FILE="$1"
       else
-        echo "Usage: $0 [--profile <profile>] <terrain.txt>" >&2
+        echo "Usage: $0 [--profile <profile>] <terrain.txt> (default profile: sepolia)" >&2
         exit 1
       fi
       shift
@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$MAP_FILE" ]; then
-  echo "Usage: $0 [--profile <profile>] <terrain.txt>" >&2
+  echo "Usage: $0 [--profile <profile>] <terrain.txt> (default profile: sepolia)" >&2
   exit 1
 fi
 

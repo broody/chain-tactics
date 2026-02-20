@@ -32,7 +32,7 @@ fn setup_with_factory() -> (IActionsDispatcher, dojo::world::WorldStorage, u32) 
                 x: 10,
                 y: 10,
                 building_type: BuildingType::Factory,
-                owner: 1,
+                player_id: 1,
                 capture_player: 0,
                 capture_progress: 0,
                 queued_unit: 0,
@@ -122,7 +122,7 @@ fn test_build_unit_not_your_factory() {
 
     // Change factory owner to P2
     let mut building: Building = world.read_model((game_id, 10_u8, 10_u8));
-    building.owner = 2;
+    building.player_id = 2;
     world.write_model_test(@building);
 
     actions_dispatcher.build_unit(game_id, 10, 10, UnitType::Infantry);

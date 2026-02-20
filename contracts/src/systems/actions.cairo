@@ -221,7 +221,7 @@ pub mod actions {
                             x: mb.x,
                             y: mb.y,
                             building_type: mb.building_type,
-                            owner: mb.player_id,
+                            player_id: mb.player_id,
                             capture_player: 0,
                             capture_progress: 0,
                             queued_unit: 0,
@@ -488,7 +488,7 @@ pub mod actions {
 
             let mut building: Building = world.read_model((game_id, unit.x, unit.y));
             assert(building.building_type != BuildingType::None, 'No building here');
-            assert(building.owner != game.current_player, 'Already own building');
+            assert(building.player_id != game.current_player, 'Already own building');
 
             if building.capture_player != game.current_player {
                 building.capture_player = game.current_player;
@@ -498,7 +498,7 @@ pub mod actions {
             }
 
             if building.capture_progress >= CAPTURE_THRESHOLD {
-                let old_owner = building.owner;
+                let old_owner = building.player_id;
 
                 if old_owner != 0 {
                     let mut old_ps: PlayerState = world.read_model((game_id, old_owner));
@@ -510,7 +510,7 @@ pub mod actions {
                     world.write_model(@old_ps);
                 }
 
-                building.owner = game.current_player;
+                building.player_id = game.current_player;
                 building.capture_player = 0;
                 building.capture_progress = 0;
 
@@ -589,7 +589,7 @@ pub mod actions {
 
             let mut building: Building = world.read_model((game_id, factory_x, factory_y));
             assert(building.building_type == BuildingType::Factory, 'Not a factory');
-            assert(building.owner == game.current_player, 'Not your factory');
+            assert(building.player_id == game.current_player, 'Not your factory');
             assert(building.queued_unit == 0, 'Factory already queued');
 
             let unit_cost = unit_stats::cost(unit_type);
