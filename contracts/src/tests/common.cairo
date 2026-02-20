@@ -1,16 +1,16 @@
-use chain_tactics::events as events;
-use chain_tactics::models::building::m_Building;
-use chain_tactics::models::game::{m_Game, m_GameCounter};
-use chain_tactics::models::map::{m_MapBuilding, m_MapInfo, m_MapTile, m_MapUnit};
-use chain_tactics::models::player::m_PlayerState;
-use chain_tactics::models::tile::m_Tile;
-use chain_tactics::models::unit::m_Unit;
-use chain_tactics::systems::actions::{IActionsDispatcher, actions};
 use dojo::world::{WorldStorage, WorldStorageTrait, world};
 use dojo_cairo_test::{
     ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait,
     spawn_test_world,
 };
+use hashfront::events as events;
+use hashfront::models::building::m_Building;
+use hashfront::models::game::{m_Game, m_GameCounter};
+use hashfront::models::map::{m_MapBuilding, m_MapInfo, m_MapTile, m_MapUnit};
+use hashfront::models::player::m_PlayerState;
+use hashfront::models::tile::m_Tile;
+use hashfront::models::unit::m_Unit;
+use hashfront::systems::actions::{IActionsDispatcher, actions};
 use starknet::ContractAddress;
 
 pub fn PLAYER1() -> ContractAddress {
@@ -23,7 +23,7 @@ pub fn PLAYER2() -> ContractAddress {
 
 fn namespace_def() -> NamespaceDef {
     NamespaceDef {
-        namespace: "chain_tactics",
+        namespace: "hashfront",
         resources: [
             TestResource::Model(m_GameCounter::TEST_CLASS_HASH),
             TestResource::Model(m_Game::TEST_CLASS_HASH),
@@ -53,8 +53,8 @@ fn namespace_def() -> NamespaceDef {
 
 fn contract_defs() -> Span<ContractDef> {
     [
-        ContractDefTrait::new(@"chain_tactics", @"actions")
-            .with_writer_of([dojo::utils::bytearray_hash(@"chain_tactics")].span()),
+        ContractDefTrait::new(@"hashfront", @"actions")
+            .with_writer_of([dojo::utils::bytearray_hash(@"hashfront")].span()),
     ]
         .span()
 }

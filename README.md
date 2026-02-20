@@ -1,4 +1,4 @@
-# Chain Tactics
+# Hashfront
 
 Turn-based tactics game on StarkNet. Two to four players command armies on a grid, taking alternating turns to outmaneuver each other — inspired by Advance Wars.
 

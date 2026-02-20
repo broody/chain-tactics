@@ -1,4 +1,4 @@
-use chain_tactics::types::{UnitType, Vec2};
+use hashfront::types::{UnitType, Vec2};
 
 #[starknet::interface]
 pub trait IActions<T> {
@@ -25,21 +25,21 @@ pub trait IActions<T> {
 
 #[dojo::contract]
 pub mod actions {
-    use chain_tactics::consts::{CAPTURE_THRESHOLD, MAX_ROUNDS, STARTING_GOLD};
-    use chain_tactics::events::{
+    use dojo::event::EventStorage;
+    use dojo::model::ModelStorage;
+    use hashfront::consts::{CAPTURE_THRESHOLD, MAX_ROUNDS, STARTING_GOLD};
+    use hashfront::events::{
         BuildingCaptured, GameCreated, GameOver, GameStarted, PlayerJoined, TurnEnded, UnitAttacked,
         UnitBuilt, UnitDied, UnitMoved,
     };
-    use chain_tactics::helpers::{combat, game as game_helpers, map as map_helpers, unit_stats};
-    use chain_tactics::models::building::Building;
-    use chain_tactics::models::game::{Game, GameCounter};
-    use chain_tactics::models::map::{MapBuilding, MapInfo, MapTile, MapUnit};
-    use chain_tactics::models::player::PlayerState;
-    use chain_tactics::models::tile::Tile;
-    use chain_tactics::models::unit::{Unit, UnitImpl};
-    use chain_tactics::types::{BuildingType, GameState, TileType, UnitType, Vec2};
-    use dojo::event::EventStorage;
-    use dojo::model::ModelStorage;
+    use hashfront::helpers::{combat, game as game_helpers, map as map_helpers, unit_stats};
+    use hashfront::models::building::Building;
+    use hashfront::models::game::{Game, GameCounter};
+    use hashfront::models::map::{MapBuilding, MapInfo, MapTile, MapUnit};
+    use hashfront::models::player::PlayerState;
+    use hashfront::models::tile::Tile;
+    use hashfront::models::unit::{Unit, UnitImpl};
+    use hashfront::types::{BuildingType, GameState, TileType, UnitType, Vec2};
     use starknet::get_caller_address;
     use super::IActions;
 
@@ -730,7 +730,7 @@ pub mod actions {
     #[generate_trait]
     impl InternalImpl of InternalTrait {
         fn world_default(self: @ContractState) -> dojo::world::WorldStorage {
-            self.world(@"chain_tactics")
+            self.world(@"hashfront")
         }
     }
 }

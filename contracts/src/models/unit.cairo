@@ -1,5 +1,5 @@
-use chain_tactics::types::UnitType;
 use dojo::model::ModelStorage;
+use hashfront::types::UnitType;
 
 #[derive(Introspect, Serde, Drop, DojoStore)]
 #[dojo::model]

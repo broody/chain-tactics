@@ -1,11 +1,11 @@
-use chain_tactics::consts::STARTING_GOLD;
-use chain_tactics::models::building::Building;
-use chain_tactics::models::game::Game;
-use chain_tactics::models::player::PlayerState;
-use chain_tactics::models::tile::Tile;
-use chain_tactics::systems::actions::IActionsDispatcherTrait;
-use chain_tactics::types::{BuildingType, GameState, TileType};
 use dojo::model::ModelStorage;
+use hashfront::consts::STARTING_GOLD;
+use hashfront::models::building::Building;
+use hashfront::models::game::Game;
+use hashfront::models::player::PlayerState;
+use hashfront::models::tile::Tile;
+use hashfront::systems::actions::IActionsDispatcherTrait;
+use hashfront::types::{BuildingType, GameState, TileType};
 use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, build_test_buildings, build_test_tiles, build_test_units, setup};
 

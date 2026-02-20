@@ -1,7 +1,7 @@
-use chain_tactics::models::unit::Unit;
-use chain_tactics::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
-use chain_tactics::types::Vec2;
 use dojo::model::ModelStorage;
+use hashfront::models::unit::Unit;
+use hashfront::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
+use hashfront::types::Vec2;
 use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{
     PLAYER1, PLAYER2, build_test_buildings, build_test_tiles, build_test_units, setup,

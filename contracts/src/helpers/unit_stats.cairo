@@ -1,4 +1,4 @@
-use chain_tactics::types::{TileType, UnitType};
+use hashfront::types::{TileType, UnitType};
 
 pub fn max_hp(unit_type: UnitType) -> u8 {
     match unit_type {

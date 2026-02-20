@@ -33,7 +33,7 @@ if [ -n "$PROFILE" ]; then
 fi
 
 # Call the view function — output is hex values like 0x0x00...0a wrapped in [ ]
-RAW=$(sozo call ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} chain_tactics-actions get_terrain "$MAP_ID" 2>&1)
+RAW=$(sozo call ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} hashfront-actions get_terrain "$MAP_ID" 2>&1)
 
 # Strip brackets, parse hex to decimal
 VALUES=()

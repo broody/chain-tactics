@@ -1,4 +1,4 @@
-use chain_tactics::types::TileType;
+use hashfront::types::TileType;
 
 #[derive(Introspect, Serde, Drop, DojoStore)]
 #[dojo::model]

@@ -20,10 +20,10 @@ interface GraphEdge<T> {
 }
 
 interface TurnStatusQueryResult {
-  chainTacticsGameModels: {
+  hashfrontGameModels: {
     edges: GraphEdge<{ current_player: string | number }>[];
   };
-  chainTacticsPlayerStateModels: {
+  hashfrontPlayerStateModels: {
     edges: GraphEdge<{ player_id: string | number; address: string }>[];
   };
 }
@@ -73,14 +73,14 @@ const HUD = () => {
       try {
         const query = `
           query {
-            chainTacticsGameModels(where: {game_idEQ: ${gameId}}) {
+            hashfrontGameModels(where: {game_idEQ: ${gameId}}) {
               edges {
                 node {
                   current_player
                 }
               }
             }
-            chainTacticsPlayerStateModels(where: {game_idEQ: ${gameId}}) {
+            hashfrontPlayerStateModels(where: {game_idEQ: ${gameId}}) {
               edges {
                 node {
                   player_id
@@ -100,7 +100,7 @@ const HUD = () => {
         if (!active || result.error || !result.data) return;
 
         const nextCurrentPlayer = toNumber(
-          result.data.chainTacticsGameModels.edges[0]?.node.current_player,
+          result.data.hashfrontGameModels.edges[0]?.node.current_player,
         );
         setCurrentPlayer(nextCurrentPlayer > 0 ? nextCurrentPlayer : null);
 
@@ -110,7 +110,7 @@ const HUD = () => {
         }
 
         const normalizedAddress = normalizeAddressHex(address);
-        const myPlayer = result.data.chainTacticsPlayerStateModels.edges.find(
+        const myPlayer = result.data.hashfrontPlayerStateModels.edges.find(
           (edge) =>
             normalizeAddressHex(edge.node.address) === normalizedAddress,
         )?.node;

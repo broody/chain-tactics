@@ -44,5 +44,5 @@ fi
 
 echo "Creating game: map_id=$MAP_ID, player_id=$PLAYER_ID, test_mode=$TEST_MODE"
 
-sozo execute ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} chain_tactics-actions create_game \
+sozo execute ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} hashfront-actions create_game \
   $MAP_ID $PLAYER_ID $TEST_MODE

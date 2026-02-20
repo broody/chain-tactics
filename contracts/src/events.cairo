@@ -1,4 +1,4 @@
-use chain_tactics::types::UnitType;
+use hashfront::types::UnitType;
 
 #[derive(Introspect, Serde, Drop)]
 #[dojo::event]

@@ -2,8 +2,8 @@
   "world": {
     "class_hash": "0x613551abceb2b37073b1149bb862ea70cf029981ce1ca47e9dd7c7ab97cb65d",
     "address": "0x436666648b351b1d2e6370c800fbcc2b84cddf2b9f9d901db39050b323940f",
-    "seed": "chain_tactics_1",
-    "name": "Chain Tactics",
+    "seed": "hashfront_1",
+    "name": "Hashfront",
     "entrypoints": [
       "uuid",
       "set_metadata",
@@ -36,7 +36,7 @@
       "address": "0x39f2b3b53ba3630b74171173698699b02434337e5538943574dc1080150ad83",
       "class_hash": "0x248418811193c6929a1727aa7655dcb835932d8b1de447e517aac66be76930a",
       "init_calldata": [],
-      "tag": "chain_tactics-actions",
+      "tag": "hashfront-actions",
       "selector": "0x10d95ab7e962c6637491dc1551130b8ada3cc9f2c3421c79d75623ca922466c",
       "systems": [
         "register_map",
@@ -73,7 +73,7 @@
         },
         {
           "name": "building_type",
-          "type": "chain_tactics::types::BuildingType",
+          "type": "hashfront::types::BuildingType",
           "key": false
         },
         {
@@ -98,7 +98,7 @@
         }
       ],
       "class_hash": "0x1c39df6c4ff205cf1f10788a9067139920703fe433b0b50b3c4839c0f147f43",
-      "tag": "chain_tactics-Building",
+      "tag": "hashfront-Building",
       "selector": "0x4ecf43b372aa0394176c21985100b004ac1b18679eeb95c0f2914caee89cd7c"
     },
     {
@@ -115,7 +115,7 @@
         },
         {
           "name": "state",
-          "type": "chain_tactics::types::GameState",
+          "type": "hashfront::types::GameState",
           "key": false
         },
         {
@@ -160,7 +160,7 @@
         }
       ],
       "class_hash": "0x2da41544fc6ec959a72f4913f1cc42bcf223f88708ec028618b527e18b395d4",
-      "tag": "chain_tactics-Game",
+      "tag": "hashfront-Game",
       "selector": "0x2be78c5ae6b0c742cd7ba5ec45363e60f831c26cc9e0ea446ba482a4e204484"
     },
     {
@@ -177,7 +177,7 @@
         }
       ],
       "class_hash": "0x69fa2a68b64cda5198c8581197dbfdf0d43044319e30ba28bc0e2e710b6af1b",
-      "tag": "chain_tactics-GameCounter",
+      "tag": "hashfront-GameCounter",
       "selector": "0x322841f49335c0df79641e2b97a2a86f5f7b514fe9caebf03bd464f94d8420e"
     },
     {
@@ -199,7 +199,7 @@
         },
         {
           "name": "building_type",
-          "type": "chain_tactics::types::BuildingType",
+          "type": "hashfront::types::BuildingType",
           "key": false
         },
         {
@@ -214,7 +214,7 @@
         }
       ],
       "class_hash": "0x44a02d50d5746742c82d9a41ed6355346d918e6ecb86018fdbe05f5560d90bc",
-      "tag": "chain_tactics-MapBuilding",
+      "tag": "hashfront-MapBuilding",
       "selector": "0x123326471d7febb3960a76b2e1f1c9d57dd7cc604337bee776847af4957643b"
     },
     {
@@ -256,7 +256,7 @@
         }
       ],
       "class_hash": "0x18274e968b52194cb990eec6e4fa436718f73959b6f6c07a23a481842752280",
-      "tag": "chain_tactics-MapInfo",
+      "tag": "hashfront-MapInfo",
       "selector": "0x6bbbbf7c95e6ac498db0be731189a5f420852612aa558065bfeab09b5952225"
     },
     {
@@ -278,12 +278,12 @@
         },
         {
           "name": "tile_type",
-          "type": "chain_tactics::types::TileType",
+          "type": "hashfront::types::TileType",
           "key": false
         }
       ],
       "class_hash": "0x57a01bdb53109f7c60facbdeba29a2a10f4f19d6df713d497ff4628c0e6def2",
-      "tag": "chain_tactics-MapTile",
+      "tag": "hashfront-MapTile",
       "selector": "0x6f29437299071183095d64ca6ac3a0379a150dd6692afed76b4040db00682df"
     },
     {
@@ -305,7 +305,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType",
+          "type": "hashfront::types::UnitType",
           "key": false
         },
         {
@@ -320,7 +320,7 @@
         }
       ],
       "class_hash": "0x5ca1ba514efe5c00d256e4b708a7608bf1b172b9ee8a09f8f81c8dadaea1d3a",
-      "tag": "chain_tactics-MapUnit",
+      "tag": "hashfront-MapUnit",
       "selector": "0x3ff9624e321fc641d91ac3b8574bbec07bd5af451abee7d94661df1945e8b99"
     },
     {
@@ -367,7 +367,7 @@
         }
       ],
       "class_hash": "0x2fcc574bbcc05a4117c3359ef7ada93bc45f0d846da0da6beee203f01c20e21",
-      "tag": "chain_tactics-PlayerState",
+      "tag": "hashfront-PlayerState",
       "selector": "0x24cb685db879872a1f4ba7ce535c11e9f94d12213506ab073bf74737a69bac0"
     },
     {
@@ -389,12 +389,12 @@
         },
         {
           "name": "tile_type",
-          "type": "chain_tactics::types::TileType",
+          "type": "hashfront::types::TileType",
           "key": false
         }
       ],
       "class_hash": "0x229de9ccb23c18f7946f93b88bcac17417f74aec0a4961a791239e5c3fd8d95",
-      "tag": "chain_tactics-Tile",
+      "tag": "hashfront-Tile",
       "selector": "0x4f4446b29928375e095539f4355dcbf0f4e96b423a669711e78c2c73d4349d1"
     },
     {
@@ -416,7 +416,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType",
+          "type": "hashfront::types::UnitType",
           "key": false
         },
         {
@@ -451,7 +451,7 @@
         }
       ],
       "class_hash": "0x2cbe52e1f808b6aca44343590b65c2fb9da65ae137199905a5762ba9be74ec8",
-      "tag": "chain_tactics-Unit",
+      "tag": "hashfront-Unit",
       "selector": "0x7d97b4eeac0257748dd5b8c659493ab7ac45d6850c7eeb659e92457daf095f"
     }
   ],
@@ -480,7 +480,7 @@
         }
       ],
       "class_hash": "0x5d39f86de5ecc41103b15e639fa3df8122d41371d5bde795261068bc3c1e070",
-      "tag": "chain_tactics-BuildingCaptured",
+      "tag": "hashfront-BuildingCaptured",
       "selector": "0x1511a36332d08800c50a7512aa6e17a53855a92a15edb8f6bf49f19d3beada"
     },
     {
@@ -502,7 +502,7 @@
         }
       ],
       "class_hash": "0x5aca55b1efafe09c1b5bbb9bb6228f3b08811be2e2407a69dd7d4887ae34cf2",
-      "tag": "chain_tactics-GameCreated",
+      "tag": "hashfront-GameCreated",
       "selector": "0x4cc43058221a44ad5db1ce977ef8c273cf77a420245022577a581292fe0f934"
     },
     {
@@ -519,7 +519,7 @@
         }
       ],
       "class_hash": "0x3308ab23988bc5603dd6a597ce21ff5048c87dd397f39d04e66f006d04871ea",
-      "tag": "chain_tactics-GameOver",
+      "tag": "hashfront-GameOver",
       "selector": "0x6835f6c616a047990f383867e4c56bfd9f696acaa09c067e4c6131a4924dab9"
     },
     {
@@ -536,7 +536,7 @@
         }
       ],
       "class_hash": "0x401cc571b9f1a1d60751862084a7456fe102d41619c87b7502d8e5d49b065b8",
-      "tag": "chain_tactics-GameStarted",
+      "tag": "hashfront-GameStarted",
       "selector": "0x2f7f4cdaef2f698e0631822428f3f5da7ee282df95e86afe965e97b808f15bf"
     },
     {
@@ -553,7 +553,7 @@
         }
       ],
       "class_hash": "0x3afdb76e00bb2c0cf2844c25cf09d8899d8e2a9c7e46b0c0b69bb81b5b7a52d",
-      "tag": "chain_tactics-PlayerJoined",
+      "tag": "hashfront-PlayerJoined",
       "selector": "0x4f7c023b57664636a37ea8d68416b48856c1e7e6903729513796d77e05742eb"
     },
     {
@@ -575,7 +575,7 @@
         }
       ],
       "class_hash": "0x66461c26a50018a375d93a45e0ab2dbf8005dc922c6facad1ec999e126f2ffe",
-      "tag": "chain_tactics-TurnEnded",
+      "tag": "hashfront-TurnEnded",
       "selector": "0x6c4e576167579cb860e0b22854c485571c28013150cf062a48ec66ff0cc060e"
     },
     {
@@ -607,7 +607,7 @@
         }
       ],
       "class_hash": "0x675206b81f381b3f1e841998ad92b3c20a27e86ed1ef9805bad60f81dee968e",
-      "tag": "chain_tactics-UnitAttacked",
+      "tag": "hashfront-UnitAttacked",
       "selector": "0x1ccf66b1b7153baf1d15bc20b252d542f0f6ee9ccdefb31375f96dff6a1ff05"
     },
     {
@@ -619,7 +619,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType",
+          "type": "hashfront::types::UnitType",
           "key": false
         },
         {
@@ -634,7 +634,7 @@
         }
       ],
       "class_hash": "0x546455a02086f62720b2789256f802f7cee4d060b4146cedb1de8cee818b3b4",
-      "tag": "chain_tactics-UnitBuilt",
+      "tag": "hashfront-UnitBuilt",
       "selector": "0x1226370148482c07ff97d68eddfdbc20690dd5cdb9bdcc9e35646cf81d772"
     },
     {
@@ -651,7 +651,7 @@
         }
       ],
       "class_hash": "0x6a8a4e4dc0eb7d52d8c41117d3aa0b34435d525991a490bf128816f6695270a",
-      "tag": "chain_tactics-UnitDied",
+      "tag": "hashfront-UnitDied",
       "selector": "0xd6ff2482c61592012b1d686c8c82dd179b6f046fbe4b31a069627a13387de1"
     },
     {
@@ -678,7 +678,7 @@
         }
       ],
       "class_hash": "0x3934db7f6d782f29e26ea782085c8f4262e5843c30fb1398078268c93ac0568",
-      "tag": "chain_tactics-UnitMoved",
+      "tag": "hashfront-UnitMoved",
       "selector": "0x4f9c767c42c24b2b8dfe826a6945e0d9162018dc430587c616a1071047c1acf"
     }
   ],
@@ -686,7 +686,7 @@
   "abis": [
     {
       "type": "struct",
-      "name": "chain_tactics::events::BuildingCaptured",
+      "name": "hashfront::events::BuildingCaptured",
       "members": [
         {
           "name": "game_id",
@@ -708,7 +708,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::BuildingCapturedValue",
+      "name": "hashfront::events::BuildingCapturedValue",
       "members": [
         {
           "name": "x",
@@ -726,7 +726,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::GameCreated",
+      "name": "hashfront::events::GameCreated",
       "members": [
         {
           "name": "game_id",
@@ -744,7 +744,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::GameCreatedValue",
+      "name": "hashfront::events::GameCreatedValue",
       "members": [
         {
           "name": "map_id",
@@ -758,7 +758,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::GameOver",
+      "name": "hashfront::events::GameOver",
       "members": [
         {
           "name": "game_id",
@@ -772,7 +772,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::GameOverValue",
+      "name": "hashfront::events::GameOverValue",
       "members": [
         {
           "name": "winner",
@@ -782,7 +782,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::GameStarted",
+      "name": "hashfront::events::GameStarted",
       "members": [
         {
           "name": "game_id",
@@ -796,7 +796,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::GameStartedValue",
+      "name": "hashfront::events::GameStartedValue",
       "members": [
         {
           "name": "player_count",
@@ -806,7 +806,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::PlayerJoined",
+      "name": "hashfront::events::PlayerJoined",
       "members": [
         {
           "name": "game_id",
@@ -820,7 +820,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::PlayerJoinedValue",
+      "name": "hashfront::events::PlayerJoinedValue",
       "members": [
         {
           "name": "player_id",
@@ -830,7 +830,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::TurnEnded",
+      "name": "hashfront::events::TurnEnded",
       "members": [
         {
           "name": "game_id",
@@ -848,7 +848,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::TurnEndedValue",
+      "name": "hashfront::events::TurnEndedValue",
       "members": [
         {
           "name": "next_player",
@@ -862,7 +862,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitAttacked",
+      "name": "hashfront::events::UnitAttacked",
       "members": [
         {
           "name": "game_id",
@@ -888,7 +888,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitAttackedValue",
+      "name": "hashfront::events::UnitAttackedValue",
       "members": [
         {
           "name": "attacker_id",
@@ -910,7 +910,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitBuilt",
+      "name": "hashfront::events::UnitBuilt",
       "members": [
         {
           "name": "game_id",
@@ -918,7 +918,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType"
+          "type": "hashfront::types::UnitType"
         },
         {
           "name": "x",
@@ -932,11 +932,11 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitBuiltValue",
+      "name": "hashfront::events::UnitBuiltValue",
       "members": [
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType"
+          "type": "hashfront::types::UnitType"
         },
         {
           "name": "x",
@@ -950,7 +950,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitDied",
+      "name": "hashfront::events::UnitDied",
       "members": [
         {
           "name": "game_id",
@@ -964,7 +964,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitDiedValue",
+      "name": "hashfront::events::UnitDiedValue",
       "members": [
         {
           "name": "unit_id",
@@ -974,7 +974,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitMoved",
+      "name": "hashfront::events::UnitMoved",
       "members": [
         {
           "name": "game_id",
@@ -996,7 +996,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::events::UnitMovedValue",
+      "name": "hashfront::events::UnitMovedValue",
       "members": [
         {
           "name": "unit_id",
@@ -1014,67 +1014,67 @@
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_BuildingCaptured::Event",
+      "name": "hashfront::events::e_BuildingCaptured::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_GameCreated::Event",
+      "name": "hashfront::events::e_GameCreated::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_GameOver::Event",
+      "name": "hashfront::events::e_GameOver::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_GameStarted::Event",
+      "name": "hashfront::events::e_GameStarted::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_PlayerJoined::Event",
+      "name": "hashfront::events::e_PlayerJoined::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_TurnEnded::Event",
+      "name": "hashfront::events::e_TurnEnded::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_UnitAttacked::Event",
+      "name": "hashfront::events::e_UnitAttacked::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_UnitBuilt::Event",
+      "name": "hashfront::events::e_UnitBuilt::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_UnitDied::Event",
+      "name": "hashfront::events::e_UnitDied::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::events::e_UnitMoved::Event",
+      "name": "hashfront::events::e_UnitMoved::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::building::Building",
+      "name": "hashfront::models::building::Building",
       "members": [
         {
           "name": "game_id",
@@ -1090,7 +1090,7 @@
         },
         {
           "name": "building_type",
-          "type": "chain_tactics::types::BuildingType"
+          "type": "hashfront::types::BuildingType"
         },
         {
           "name": "owner",
@@ -1112,11 +1112,11 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::building::BuildingValue",
+      "name": "hashfront::models::building::BuildingValue",
       "members": [
         {
           "name": "building_type",
-          "type": "chain_tactics::types::BuildingType"
+          "type": "hashfront::types::BuildingType"
         },
         {
           "name": "owner",
@@ -1138,13 +1138,13 @@
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::building::m_Building::Event",
+      "name": "hashfront::models::building::m_Building::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::game::Game",
+      "name": "hashfront::models::game::Game",
       "members": [
         {
           "name": "game_id",
@@ -1156,7 +1156,7 @@
         },
         {
           "name": "state",
-          "type": "chain_tactics::types::GameState"
+          "type": "hashfront::types::GameState"
         },
         {
           "name": "player_count",
@@ -1194,7 +1194,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::game::GameCounter",
+      "name": "hashfront::models::game::GameCounter",
       "members": [
         {
           "name": "id",
@@ -1208,7 +1208,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::game::GameCounterValue",
+      "name": "hashfront::models::game::GameCounterValue",
       "members": [
         {
           "name": "count",
@@ -1218,7 +1218,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::game::GameValue",
+      "name": "hashfront::models::game::GameValue",
       "members": [
         {
           "name": "map_id",
@@ -1226,7 +1226,7 @@
         },
         {
           "name": "state",
-          "type": "chain_tactics::types::GameState"
+          "type": "hashfront::types::GameState"
         },
         {
           "name": "player_count",
@@ -1264,19 +1264,19 @@
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::game::m_Game::Event",
+      "name": "hashfront::models::game::m_Game::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::game::m_GameCounter::Event",
+      "name": "hashfront::models::game::m_GameCounter::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapBuilding",
+      "name": "hashfront::models::map::MapBuilding",
       "members": [
         {
           "name": "map_id",
@@ -1292,7 +1292,7 @@
         },
         {
           "name": "building_type",
-          "type": "chain_tactics::types::BuildingType"
+          "type": "hashfront::types::BuildingType"
         },
         {
           "name": "x",
@@ -1306,7 +1306,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapBuildingValue",
+      "name": "hashfront::models::map::MapBuildingValue",
       "members": [
         {
           "name": "player_id",
@@ -1314,7 +1314,7 @@
         },
         {
           "name": "building_type",
-          "type": "chain_tactics::types::BuildingType"
+          "type": "hashfront::types::BuildingType"
         },
         {
           "name": "x",
@@ -1328,7 +1328,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapInfo",
+      "name": "hashfront::models::map::MapInfo",
       "members": [
         {
           "name": "map_id",
@@ -1362,7 +1362,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapInfoValue",
+      "name": "hashfront::models::map::MapInfoValue",
       "members": [
         {
           "name": "player_count",
@@ -1392,7 +1392,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapTile",
+      "name": "hashfront::models::map::MapTile",
       "members": [
         {
           "name": "map_id",
@@ -1408,13 +1408,13 @@
         },
         {
           "name": "tile_type",
-          "type": "chain_tactics::types::TileType"
+          "type": "hashfront::types::TileType"
         }
       ]
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapTileValue",
+      "name": "hashfront::models::map::MapTileValue",
       "members": [
         {
           "name": "index",
@@ -1422,13 +1422,13 @@
         },
         {
           "name": "tile_type",
-          "type": "chain_tactics::types::TileType"
+          "type": "hashfront::types::TileType"
         }
       ]
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapUnit",
+      "name": "hashfront::models::map::MapUnit",
       "members": [
         {
           "name": "map_id",
@@ -1444,7 +1444,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType"
+          "type": "hashfront::types::UnitType"
         },
         {
           "name": "x",
@@ -1458,7 +1458,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::map::MapUnitValue",
+      "name": "hashfront::models::map::MapUnitValue",
       "members": [
         {
           "name": "player_id",
@@ -1466,7 +1466,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType"
+          "type": "hashfront::types::UnitType"
         },
         {
           "name": "x",
@@ -1480,31 +1480,31 @@
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::map::m_MapBuilding::Event",
+      "name": "hashfront::models::map::m_MapBuilding::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::map::m_MapInfo::Event",
+      "name": "hashfront::models::map::m_MapInfo::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::map::m_MapTile::Event",
+      "name": "hashfront::models::map::m_MapTile::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::map::m_MapUnit::Event",
+      "name": "hashfront::models::map::m_MapUnit::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::player::PlayerState",
+      "name": "hashfront::models::player::PlayerState",
       "members": [
         {
           "name": "game_id",
@@ -1542,7 +1542,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::player::PlayerStateValue",
+      "name": "hashfront::models::player::PlayerStateValue",
       "members": [
         {
           "name": "address",
@@ -1572,13 +1572,13 @@
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::player::m_PlayerState::Event",
+      "name": "hashfront::models::player::m_PlayerState::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::tile::Tile",
+      "name": "hashfront::models::tile::Tile",
       "members": [
         {
           "name": "game_id",
@@ -1594,29 +1594,29 @@
         },
         {
           "name": "tile_type",
-          "type": "chain_tactics::types::TileType"
+          "type": "hashfront::types::TileType"
         }
       ]
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::tile::TileValue",
+      "name": "hashfront::models::tile::TileValue",
       "members": [
         {
           "name": "tile_type",
-          "type": "chain_tactics::types::TileType"
+          "type": "hashfront::types::TileType"
         }
       ]
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::tile::m_Tile::Event",
+      "name": "hashfront::models::tile::m_Tile::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::unit::Unit",
+      "name": "hashfront::models::unit::Unit",
       "members": [
         {
           "name": "game_id",
@@ -1632,7 +1632,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType"
+          "type": "hashfront::types::UnitType"
         },
         {
           "name": "x",
@@ -1662,7 +1662,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::models::unit::UnitValue",
+      "name": "hashfront::models::unit::UnitValue",
       "members": [
         {
           "name": "player_id",
@@ -1670,7 +1670,7 @@
         },
         {
           "name": "unit_type",
-          "type": "chain_tactics::types::UnitType"
+          "type": "hashfront::types::UnitType"
         },
         {
           "name": "x",
@@ -1700,13 +1700,13 @@
     },
     {
       "type": "event",
-      "name": "chain_tactics::models::unit::m_Unit::Event",
+      "name": "hashfront::models::unit::m_Unit::Event",
       "kind": "enum",
       "variants": []
     },
     {
       "type": "interface",
-      "name": "chain_tactics::systems::actions::IActions",
+      "name": "hashfront::systems::actions::IActions",
       "items": [
         {
           "type": "function",
@@ -1790,7 +1790,7 @@
             },
             {
               "name": "path",
-              "type": "core::array::Array::<chain_tactics::types::Vec2>"
+              "type": "core::array::Array::<hashfront::types::Vec2>"
             }
           ],
           "outputs": [],
@@ -1866,7 +1866,7 @@
             },
             {
               "name": "unit_type",
-              "type": "chain_tactics::types::UnitType"
+              "type": "hashfront::types::UnitType"
             }
           ],
           "outputs": [],
@@ -1936,7 +1936,7 @@
     },
     {
       "type": "event",
-      "name": "chain_tactics::systems::actions::actions::Event",
+      "name": "hashfront::systems::actions::actions::Event",
       "kind": "enum",
       "variants": [
         {
@@ -1953,7 +1953,7 @@
     },
     {
       "type": "enum",
-      "name": "chain_tactics::types::BuildingType",
+      "name": "hashfront::types::BuildingType",
       "variants": [
         {
           "name": "None",
@@ -1975,7 +1975,7 @@
     },
     {
       "type": "enum",
-      "name": "chain_tactics::types::GameState",
+      "name": "hashfront::types::GameState",
       "variants": [
         {
           "name": "Lobby",
@@ -1993,7 +1993,7 @@
     },
     {
       "type": "enum",
-      "name": "chain_tactics::types::TileType",
+      "name": "hashfront::types::TileType",
       "variants": [
         {
           "name": "Grass",
@@ -2031,7 +2031,7 @@
     },
     {
       "type": "enum",
-      "name": "chain_tactics::types::UnitType",
+      "name": "hashfront::types::UnitType",
       "variants": [
         {
           "name": "None",
@@ -2053,7 +2053,7 @@
     },
     {
       "type": "struct",
-      "name": "chain_tactics::types::Vec2",
+      "name": "hashfront::types::Vec2",
       "members": [
         {
           "name": "x",
@@ -3886,7 +3886,7 @@
       "inputs": [
         {
           "name": "event",
-          "type": "chain_tactics::events::UnitMoved"
+          "type": "hashfront::events::UnitMoved"
         }
       ],
       "outputs": [],
@@ -3905,7 +3905,7 @@
       "inputs": [
         {
           "name": "value",
-          "type": "chain_tactics::events::UnitMovedValue"
+          "type": "hashfront::events::UnitMovedValue"
         }
       ],
       "outputs": [],

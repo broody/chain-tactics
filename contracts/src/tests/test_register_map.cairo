@@ -1,7 +1,7 @@
-use chain_tactics::models::map::{MapInfo, MapTile, MapUnit};
-use chain_tactics::systems::actions::IActionsDispatcherTrait;
-use chain_tactics::types::{TileType, UnitType};
 use dojo::model::ModelStorage;
+use hashfront::models::map::{MapInfo, MapTile, MapUnit};
+use hashfront::systems::actions::IActionsDispatcherTrait;
+use hashfront::types::{TileType, UnitType};
 use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{PLAYER1, build_test_buildings, build_test_tiles, build_test_units, setup};
 

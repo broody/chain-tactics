@@ -1,11 +1,11 @@
-use chain_tactics::consts::MAX_ROUNDS;
-use chain_tactics::models::building::Building;
-use chain_tactics::models::game::Game;
-use chain_tactics::models::player::PlayerState;
-use chain_tactics::models::unit::Unit;
-use chain_tactics::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
-use chain_tactics::types::{BuildingType, GameState, UnitType};
 use dojo::model::{ModelStorage, ModelStorageTest};
+use hashfront::consts::MAX_ROUNDS;
+use hashfront::models::building::Building;
+use hashfront::models::game::Game;
+use hashfront::models::player::PlayerState;
+use hashfront::models::unit::Unit;
+use hashfront::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
+use hashfront::types::{BuildingType, GameState, UnitType};
 use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{
     PLAYER1, PLAYER2, build_test_buildings, build_test_tiles, build_test_units, setup,

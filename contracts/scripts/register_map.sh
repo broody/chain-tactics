@@ -105,7 +105,7 @@ if [ -n "$PROFILE" ]; then
   PROFILE_ARGS=(--profile "$PROFILE")
 fi
 
-sozo execute ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} chain_tactics-actions register_map \
+sozo execute ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} hashfront-actions register_map \
   $WIDTH $HEIGHT \
   $TILE_COUNT $TILES \
   $BUILDING_COUNT $BUILDINGS \

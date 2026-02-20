@@ -1,6 +1,6 @@
 [package]
 cairo-version = "2.13.1"
-name = "chain_tactics"
+name = "hashfront"
 version = "1.0.0"
 edition = "2024_07"
 

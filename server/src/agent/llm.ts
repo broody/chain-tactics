@@ -16,6 +16,19 @@ interface CompletionResponse {
   usage: { promptTokens: number; completionTokens: number };
 }
 
+interface OpenRouterResponse {
+  model?: string;
+  choices?: Array<{
+    message?: {
+      content?: string;
+    };
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+  };
+}
+
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export async function complete(
@@ -28,7 +41,7 @@ export async function complete(
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "HTTP-Referer": "https://chain-tactics.dev",
-      "X-Title": "Chain Tactics",
+      "X-Title": "Hashfront",
     },
     body: JSON.stringify({
       model: options.model,
@@ -43,7 +56,7 @@ export async function complete(
     throw new Error(`OpenRouter API error ${res.status}: ${text}`);
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as OpenRouterResponse;
   const choice = data.choices?.[0];
 
   return {

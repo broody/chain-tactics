@@ -2,15 +2,6 @@
 version = 1
 
 [[package]]
-name = "chain_tactics"
-version = "1.0.0"
-dependencies = [
- "dojo",
- "dojo_cairo_macros",
- "dojo_cairo_test",
-]
-
-[[package]]
 name = "dojo"
 version = "1.8.0"
 source = "registry+https://scarbs.xyz/"
@@ -32,4 +23,13 @@ source = "registry+https://scarbs.xyz/"
 checksum = "sha256:0cab4c86390b6ee9c3969b82d27f46ecd7f14e686b9868528506103944638465"
 dependencies = [
  "dojo",
+]
+
+[[package]]
+name = "hashfront"
+version = "1.0.0"
+dependencies = [
+ "dojo",
+ "dojo_cairo_macros",
+ "dojo_cairo_test",
 ]

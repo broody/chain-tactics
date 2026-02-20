@@ -1,4 +1,4 @@
-use chain_tactics::types::GameState;
+use hashfront::types::GameState;
 
 #[derive(Introspect, Serde, Drop, DojoStore)]
 #[dojo::model]

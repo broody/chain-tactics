@@ -1,14 +1,14 @@
-use chain_tactics::consts::INCOME_PER_CITY;
-use chain_tactics::events::GameOver;
-use chain_tactics::helpers::unit_stats;
-use chain_tactics::models::building::Building;
-use chain_tactics::models::game::Game;
-use chain_tactics::models::map::{MapInfo, MapUnit};
-use chain_tactics::models::player::PlayerState;
-use chain_tactics::models::unit::{Unit, UnitImpl};
-use chain_tactics::types::{BuildingType, GameState, UnitType};
 use dojo::event::EventStorage;
 use dojo::model::ModelStorage;
+use hashfront::consts::INCOME_PER_CITY;
+use hashfront::events::GameOver;
+use hashfront::helpers::unit_stats;
+use hashfront::models::building::Building;
+use hashfront::models::game::Game;
+use hashfront::models::map::{MapInfo, MapUnit};
+use hashfront::models::player::PlayerState;
+use hashfront::models::unit::{Unit, UnitImpl};
+use hashfront::types::{BuildingType, GameState, UnitType};
 
 pub fn spawn_starting_units(
     ref world: dojo::world::WorldStorage, game_id: u32, ref game: Game, map_id: u8,

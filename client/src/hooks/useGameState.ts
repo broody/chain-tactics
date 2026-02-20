@@ -47,14 +47,14 @@ interface PlayerStateModelNode {
 }
 
 interface GameStateQueryResult {
-  chainTacticsGameModels: { edges: GraphEdge<GameModelNode>[] };
-  chainTacticsBuildingModels: { edges: GraphEdge<BuildingModelNode>[] };
-  chainTacticsUnitModels: { edges: GraphEdge<UnitModelNode>[] };
-  chainTacticsPlayerStateModels: { edges: GraphEdge<PlayerStateModelNode>[] };
+  hashfrontGameModels: { edges: GraphEdge<GameModelNode>[] };
+  hashfrontBuildingModels: { edges: GraphEdge<BuildingModelNode>[] };
+  hashfrontUnitModels: { edges: GraphEdge<UnitModelNode>[] };
+  hashfrontPlayerStateModels: { edges: GraphEdge<PlayerStateModelNode>[] };
 }
 
 interface TilePageQueryResult {
-  chainTacticsTileModels: {
+  hashfrontTileModels: {
     totalCount: string | number;
     pageInfo: {
       hasNextPage: boolean;
@@ -143,7 +143,7 @@ function parseUnitType(value: string | number): number {
 function buildGameStateQuery(gameId: number): string {
   return `
     query {
-      chainTacticsGameModels(where: {game_idEQ: ${gameId}}) {
+      hashfrontGameModels(where: {game_idEQ: ${gameId}}) {
         edges {
           node {
             height
@@ -159,7 +159,7 @@ function buildGameStateQuery(gameId: number): string {
           }
         }
       }
-      chainTacticsBuildingModels(where: {game_idEQ: ${gameId}}) {
+      hashfrontBuildingModels(where: {game_idEQ: ${gameId}}) {
         edges {
           node {
             player_id
@@ -172,7 +172,7 @@ function buildGameStateQuery(gameId: number): string {
           }
         }
       }
-      chainTacticsUnitModels(where: {game_idEQ: ${gameId}}) {
+      hashfrontUnitModels(where: {game_idEQ: ${gameId}}) {
         edges {
           node {
             player_id
@@ -187,7 +187,7 @@ function buildGameStateQuery(gameId: number): string {
           }
         }
       }
-      chainTacticsPlayerStateModels(where: {game_idEQ: ${gameId}}) {
+      hashfrontPlayerStateModels(where: {game_idEQ: ${gameId}}) {
         edges {
           node {
             player_id
@@ -212,7 +212,7 @@ function buildTilePageQuery(
     afterCursor !== null ? `, after: ${JSON.stringify(afterCursor)}` : "";
   return `
     query {
-      chainTacticsTileModels(
+      hashfrontTileModels(
         where: {game_idEQ: ${gameId}}
         first: ${TILE_PAGE_SIZE}${afterArg}
       ) {
@@ -296,7 +296,7 @@ export function useGameState(id: string | undefined): {
         }
 
         const gameStateData = gameStateResult.data;
-        if (gameStateData.chainTacticsGameModels.edges.length === 0) {
+        if (gameStateData.hashfrontGameModels.edges.length === 0) {
           setLoadError(GAME_STATE_ERROR_MESSAGE);
           setCurrentPlayerId(null);
           setPlayerStates([]);
@@ -332,8 +332,8 @@ export function useGameState(id: string | undefined): {
             throw new Error("Failed to fetch tile page.");
           }
 
-          const tileConnection: TilePageQueryResult["chainTacticsTileModels"] =
-            tilePageResult.data.chainTacticsTileModels;
+          const tileConnection: TilePageQueryResult["hashfrontTileModels"] =
+            tilePageResult.data.hashfrontTileModels;
           allTileEdges.push(...tileConnection.edges);
 
           const totalCount = toNumber(tileConnection.totalCount);
@@ -349,12 +349,12 @@ export function useGameState(id: string | undefined): {
           }
         }
 
-        const gameNode = gameStateData.chainTacticsGameModels.edges[0]?.node;
+        const gameNode = gameStateData.hashfrontGameModels.edges[0]?.node;
         const nextCurrentPlayer = toNumber(gameNode?.current_player);
         setCurrentPlayerId(nextCurrentPlayer > 0 ? nextCurrentPlayer : null);
 
         const nextPlayerStates =
-          gameStateData.chainTacticsPlayerStateModels.edges.map(
+          gameStateData.hashfrontPlayerStateModels.edges.map(
             (edge): GamePlayerState => ({
               playerId: toNumber(edge.node.player_id),
               address: edge.node.address,
@@ -398,7 +398,7 @@ export function useGameState(id: string | undefined): {
           }
         }
 
-        for (const edge of gameStateData.chainTacticsBuildingModels.edges) {
+        for (const edge of gameStateData.hashfrontBuildingModels.edges) {
           const building = edge.node;
           const x = toNumber(building.x);
           const y = toNumber(building.y);
@@ -424,7 +424,7 @@ export function useGameState(id: string | undefined): {
           3: "artillery",
         };
 
-        for (const edge of gameStateData.chainTacticsUnitModels.edges) {
+        for (const edge of gameStateData.hashfrontUnitModels.edges) {
           const unit = edge.node;
           if (!unit.is_alive) continue;
           const teamId = teams[toNumber(unit.player_id)] || "blue";

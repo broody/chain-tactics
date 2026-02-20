@@ -1,8 +1,8 @@
-# Chain Tactics — Product Requirements Document
+# Hashfront — Product Requirements Document
 
 ## Overview
 
-Chain Tactics is a turn-based tactics game on StarkNet. Two to four players command small armies on a grid, taking alternating turns to move and attack — like classic Advance Wars. The core gameplay is outmaneuvering your opponent through positioning, unit matchups, and resource control.
+Hashfront is a turn-based tactics game on StarkNet. Two to four players command small armies on a grid, taking alternating turns to move and attack — like classic Advance Wars. The core gameplay is outmaneuvering your opponent through positioning, unit matchups, and resource control.
 
 Built on Dojo with a React + PixiJS client. An AI agent can play either side using the same transaction API as a human. Players can chat with AI agents during the game, attempting to influence their behavior through dialogue and diplomacy.
 

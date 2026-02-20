@@ -1,5 +1,5 @@
-use chain_tactics::helpers::unit_stats;
-use chain_tactics::types::{TileType, UnitType};
+use hashfront::helpers::unit_stats;
+use hashfront::types::{TileType, UnitType};
 
 /// Returns (damage_to_defender, damage_to_attacker).
 /// Counterattack only happens if defender survives and attacker is within defender's range.

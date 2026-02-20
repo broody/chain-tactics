@@ -35,7 +35,7 @@ interface GameModelNode {
 }
 
 interface LobbyGamesQueryResult {
-  chainTacticsGameModels: {
+  hashfrontGameModels: {
     totalCount: string | number;
     edges: GraphEdge<GameModelNode>[];
   };
@@ -49,7 +49,7 @@ interface MapInfoNode {
 }
 
 interface MapInfoQueryResult {
-  chainTacticsMapInfoModels: {
+  hashfrontMapInfoModels: {
     edges: GraphEdge<MapInfoNode>[];
   };
 }
@@ -60,7 +60,7 @@ interface PlayerStateNode {
 }
 
 interface PlayerStateQueryResult {
-  chainTacticsPlayerStateModels: {
+  hashfrontPlayerStateModels: {
     edges: GraphEdge<PlayerStateNode>[];
   };
 }
@@ -192,7 +192,7 @@ export default function Lobby() {
   ): Promise<PlayerStateNode[]> {
     const query = `
       query {
-        chainTacticsPlayerStateModels(where: {game_idEQ: ${gameId}}) {
+        hashfrontPlayerStateModels(where: {game_idEQ: ${gameId}}) {
           edges {
             node {
               player_id
@@ -209,7 +209,7 @@ export default function Lobby() {
       })
       .toPromise();
     if (result.error || !result.data) return [];
-    return result.data.chainTacticsPlayerStateModels.edges.map(
+    return result.data.hashfrontPlayerStateModels.edges.map(
       (edge) => edge.node,
     );
   }
@@ -365,7 +365,7 @@ export default function Lobby() {
     try {
       const query = `
         query {
-          chainTacticsGameModels(
+          hashfrontGameModels(
             limit: 10
             offset: ${offset}
             order: {field: STATE, direction: ASC}
@@ -398,7 +398,7 @@ export default function Lobby() {
         .toPromise();
       if (result.error || !result.data) return;
 
-      const connection = result.data.chainTacticsGameModels;
+      const connection = result.data.hashfrontGameModels;
       const nextNodes = connection.edges.map((edge) => edge.node);
 
       setGamesTotalCount(toNumber(connection.totalCount));
@@ -446,7 +446,7 @@ export default function Lobby() {
       try {
         const query = `
           query {
-            chainTacticsMapInfoModels {
+            hashfrontMapInfoModels {
               edges {
                 node {
                   map_id
@@ -464,7 +464,7 @@ export default function Lobby() {
           })
           .toPromise();
         if (!active || result.error || !result.data) return;
-        const rows = result.data.chainTacticsMapInfoModels.edges.map(
+        const rows = result.data.hashfrontMapInfoModels.edges.map(
           (edge) => edge.node,
         );
         setMapInfos(rows);
@@ -511,10 +511,10 @@ export default function Lobby() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b-[3px] border-white pb-5 mb-2">
         <div>
           <h1 className="text-2xl md:text-4xl font-bold tracking-[2px] m-0">
-            CHAIN_TACTICS
+            HASHFRONT
           </h1>
           <div className="text-sm mt-1 opacity-80">
-            &gt; FULL_ONCHAIN_STRATEGY [STARKNET SEPOLIA]
+            &gt; FULLY_ONCHAIN_STRATEGY
           </div>
         </div>
         <div className="text-right mt-4 md:mt-0 flex flex-col items-end">
@@ -688,10 +688,35 @@ export default function Lobby() {
       </div>
 
       <footer className="flex justify-between border-t-[3px] border-white pt-5 mt-2 text-xs md:text-sm">
-        <span>CHAIN_TACTICS // DOJO // CARTRIDGE</span>
-        <span className="hidden md:inline">
-          VERSION: 0.1.3
+        <span>
+          <a
+            href="https://www.cartridge.gg"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline"
+          >
+            CARTRIDGE
+          </a>{" "}
+          //{" "}
+          <a
+            href="https://www.dojoengine.org"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline"
+          >
+            DOJO
+          </a>{" "}
+          //{" "}
+          <a
+            href="https://www.starknet.io"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline"
+          >
+            STARKNET
+          </a>
         </span>
+        <span className="hidden md:inline">VERSION: 0.1.3</span>
       </footer>
 
       {isCreateModalOpen && (

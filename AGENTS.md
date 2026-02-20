@@ -1,4 +1,4 @@
-# AGENTS.md — Chain Tactics
+# AGENTS.md — Hashfront
 
 ## Pre-commit Checklist
 

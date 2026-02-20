@@ -1,4 +1,4 @@
-use chain_tactics::types::{BuildingType, TileType, UnitType};
+use hashfront::types::{BuildingType, TileType, UnitType};
 
 #[derive(Introspect, Serde, Drop, DojoStore)]
 #[dojo::model]
