@@ -653,7 +653,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           {
             unitId: rt.unitId,
             unitOnchainId: 0,
-            call: { contractAddress: "", entrypoint: "", calldata: [] },
+            calls: [],
             originX: rt.originX,
             originY: rt.originY,
             destX: rt.path[rt.path.length - 1].x,
@@ -706,8 +706,30 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       rangeGfx.clear();
       attackableTargets = [];
       if (!selectedUnit || activeMovements.has(selectedUnit.id)) return;
-      if (pendingMoveTransactions.has(selectedUnit.id)) return;
       if (useGameStore.getState().game?.state !== "Playing") return;
+
+      // If unit has a queued move without attack, show attack targets from destination
+      const queued = useGameStore
+        .getState()
+        .moveQueue.find((m) => m.unitId === selectedUnit!.id);
+      if (queued) {
+        if (queued.calls.some((c) => c.entrypoint === "attack")) return;
+        const [minAtkRange, maxAtkRange] = UNIT_ATTACK_RANGE[
+          selectedUnit.type
+        ] ?? [1, 1];
+        const enemies = useGameStore
+          .getState()
+          .units.filter((u) => u.team !== selectedUnit!.team);
+        for (const enemy of enemies) {
+          const dist =
+            Math.abs(enemy.x - queued.destX) + Math.abs(enemy.y - queued.destY);
+          if (dist >= minAtkRange && dist <= maxAtkRange) {
+            attackableTargets.push(enemy);
+          }
+        }
+        return;
+      }
+
       if (unitHasMoved(selectedUnit)) return;
 
       const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
@@ -778,49 +800,89 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       }
     }
 
+    function drawTargetAt(
+      cx: number,
+      cy: number,
+      color: number,
+      alpha: number,
+      size: number,
+    ) {
+      const bLen = 5;
+      targetGfx
+        .moveTo(cx - size, cy - size + bLen)
+        .lineTo(cx - size, cy - size)
+        .lineTo(cx - size + bLen, cy - size)
+        .moveTo(cx + size, cy - size + bLen)
+        .lineTo(cx + size, cy - size)
+        .lineTo(cx + size - bLen, cy - size)
+        .moveTo(cx - size, cy + size - bLen)
+        .lineTo(cx - size, cy + size)
+        .lineTo(cx - size + bLen, cy + size)
+        .moveTo(cx + size, cy + size - bLen)
+        .lineTo(cx + size, cy + size)
+        .lineTo(cx + size - bLen, cy + size)
+        .stroke({ color, width: 2, alpha });
+
+      const cSize = 3;
+      targetGfx
+        .moveTo(cx - cSize, cy)
+        .lineTo(cx + cSize, cy)
+        .moveTo(cx, cy - cSize)
+        .lineTo(cx, cy + cSize)
+        .stroke({ color, width: 1.5, alpha });
+    }
+
     function drawAttackTargets() {
       targetGfx.clear();
-      if (attackableTargets.length === 0 || !selectedUnit) return;
 
       const color = 0xff4a4a; // Tactical Red
+      const baseSize = TILE_PX / 2 - 3;
       const pulse = 1 + Math.sin(selectPulse * 3) * 0.08;
+
+      // Draw queued attack targets (static, full opacity)
+      const { moveQueue, units: storeUnits } = useGameStore.getState();
+      for (const m of moveQueue) {
+        for (const call of m.calls) {
+          if (call.entrypoint !== "attack") continue;
+          const targetOnchainId = parseInt(call.calldata[2], 10);
+          const target = storeUnits.find(
+            (u) => u.onchainId === targetOnchainId,
+          );
+          if (!target) continue;
+          const cx = target.x * TILE_PX + TILE_PX / 2;
+          const cy = target.y * TILE_PX + TILE_PX / 2;
+          drawTargetAt(cx, cy, color, 1.0, baseSize);
+        }
+      }
+
+      // Draw attackable targets for selected unit
+      if (attackableTargets.length === 0 || !selectedUnit) return;
 
       for (const enemy of attackableTargets) {
         const isHovered = hoveredEnemy === enemy;
         const cx = enemy.x * TILE_PX + TILE_PX / 2;
         const cy = enemy.y * TILE_PX + TILE_PX / 2;
-
-        const size = (TILE_PX / 2 - 3) * (isHovered ? pulse : 1);
+        const size = baseSize * (isHovered ? pulse : 1);
         const alpha = isHovered ? 1.0 : 0.4;
         const bLen = 5;
 
         targetGfx
-          // Top Left
           .moveTo(cx - size, cy - size + bLen)
           .lineTo(cx - size, cy - size)
           .lineTo(cx - size + bLen, cy - size)
-          // Top Right
           .moveTo(cx + size, cy - size + bLen)
           .lineTo(cx + size, cy - size)
           .lineTo(cx + size - bLen, cy - size)
-          // Bottom Left
           .moveTo(cx - size, cy + size - bLen)
           .lineTo(cx - size, cy + size)
           .lineTo(cx - size + bLen, cy + size)
-          // Bottom Right
           .moveTo(cx + size, cy + size - bLen)
           .lineTo(cx + size, cy + size)
           .lineTo(cx + size - bLen, cy + size)
           .stroke({ color, width: 2, alpha });
 
         if (isHovered) {
-          const cSize = 3;
-          targetGfx
-            .moveTo(cx - cSize, cy)
-            .lineTo(cx + cSize, cy)
-            .moveTo(cx, cy - cSize)
-            .lineTo(cx, cy + cSize)
-            .stroke({ color, width: 1.5, alpha: 1.0 });
+          drawTargetAt(cx, cy, color, 1.0, size);
         }
       }
     }
@@ -857,6 +919,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     // --- Left-click selection (via pixi-viewport 'clicked' to avoid drag conflicts) ---
     function onVpClicked(e: { world: { x: number; y: number } }) {
       if (!isPlayerInGame(addressRef.current)) return;
+      if (useGameStore.getState().isEndingTurn) return;
 
       const gridX = Math.floor(e.world.x / TILE_PX);
       const gridY = Math.floor(e.world.y / TILE_PX);
@@ -864,7 +927,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         return;
 
       // Find unit at clicked tile — click empty space to deselect
-      const { units, game } = useGameStore.getState();
+      const { units, game, moveQueue } = useGameStore.getState();
       const myTeam = getMyTeam(addressRef.current);
       const currentTeam =
         game?.currentPlayer !== undefined
@@ -876,13 +939,28 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           ? isPlayerInGame(addressRef.current)
           : myTeam === currentTeam);
       const allowedTeam = game?.isTestMode ? currentTeam : myTeam;
-      const clicked = units.find(
+      // Check unmoved units at their store position
+      let clicked = units.find(
         (u) =>
           u.x === gridX &&
           u.y === gridY &&
           !activeMovements.has(u.id) &&
           !pendingMoveTransactions.has(u.id),
       );
+      // Also check moved units at their queued destination (if no attack queued yet)
+      if (!clicked) {
+        const queuedAtDest = moveQueue.find(
+          (m) =>
+            m.destX === gridX &&
+            m.destY === gridY &&
+            !activeMovements.has(m.unitId) &&
+            !m.calls.some((c) => c.entrypoint === "attack"),
+        );
+        if (queuedAtDest) {
+          clicked =
+            units.find((u) => u.id === queuedAtDest.unitId) ?? undefined;
+        }
+      }
       // Only allow selecting units of the current turn's team
       if (!isMyTurn || (clicked && clicked.team !== allowedTeam)) {
         selectedUnit = null;
@@ -927,7 +1005,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     function tryMoveSelectedUnit(screenX: number, screenY: number) {
       if (!selectedUnit) return;
-      const { game } = useGameStore.getState();
+      if (useGameStore.getState().isEndingTurn) return;
+      const { game, units } = useGameStore.getState();
       if (game?.state !== "Playing") return;
       const currentTeam =
         game?.currentPlayer !== undefined
@@ -937,8 +1016,6 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         ? currentTeam
         : getMyTeam(addressRef.current);
       if (!allowedTeam || selectedUnit.team !== allowedTeam) return;
-      if (pendingMoveTransactions.has(selectedUnit.id)) return;
-      if (unitHasMoved(selectedUnit)) return;
 
       const worldPos = vp.toWorld(screenX, screenY);
       const gridX = Math.floor(worldPos.x / TILE_PX);
@@ -947,6 +1024,151 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE)
         return;
 
+      // If unit already has a queued move (no attack yet), allow adding attack
+      const existingQueue = useGameStore
+        .getState()
+        .moveQueue.find((m) => m.unitId === selectedUnit!.id);
+      if (
+        existingQueue &&
+        !existingQueue.calls.some((c) => c.entrypoint === "attack")
+      ) {
+        const targetEnemy = attackableTargets.find(
+          (u) => u.x === gridX && u.y === gridY,
+        );
+        if (!targetEnemy) return;
+
+        const attackCall = {
+          contractAddress: ACTIONS_ADDRESS,
+          entrypoint: "attack",
+          calldata: [
+            gameIdRef.current.toString(),
+            selectedUnit.onchainId.toString(),
+            targetEnemy.onchainId.toString(),
+          ],
+        };
+        // Append attack to existing queue entry
+        useGameStore.getState().queueMove({
+          ...existingQueue,
+          calls: [...existingQueue.calls, attackCall],
+        });
+        // Play attack animation
+        const sprite = unitSprites.get(selectedUnit.id);
+        if (sprite) {
+          setUnitAnim(selectedUnit, sprite, "attack");
+        }
+        selectedUnit = null;
+        rangeGfx.clear();
+        attackableTargets = [];
+        drawTrails();
+        return;
+      }
+
+      if (pendingMoveTransactions.has(selectedUnit.id)) return;
+      if (unitHasMoved(selectedUnit)) return;
+
+      // Check if right-clicked tile has an attackable enemy
+      const targetEnemy = attackableTargets.find(
+        (u) => u.x === gridX && u.y === gridY,
+      );
+
+      if (targetEnemy) {
+        const attackCall = {
+          contractAddress: ACTIONS_ADDRESS,
+          entrypoint: "attack",
+          calldata: [
+            gameIdRef.current.toString(),
+            selectedUnit.onchainId.toString(),
+            targetEnemy.onchainId.toString(),
+          ],
+        };
+
+        const [minAtkRange, maxAtkRange] = UNIT_ATTACK_RANGE[
+          selectedUnit.type
+        ] ?? [1, 1];
+        const dist =
+          Math.abs(targetEnemy.x - selectedUnit.x) +
+          Math.abs(targetEnemy.y - selectedUnit.y);
+
+        if (dist >= minAtkRange && dist <= maxAtkRange) {
+          // Already in range — queue attack only (no move needed)
+          pendingMoveTransactions.add(selectedUnit.id);
+          const entry: QueuedMove = {
+            unitId: selectedUnit.id,
+            unitOnchainId: selectedUnit.onchainId,
+            calls: [attackCall],
+            originX: selectedUnit.x,
+            originY: selectedUnit.y,
+            destX: selectedUnit.x,
+            destY: selectedUnit.y,
+            path: [],
+          };
+          useGameStore.getState().queueMove(entry);
+          // Play attack animation immediately since no movement needed
+          const sprite = unitSprites.get(selectedUnit.id);
+          if (sprite) {
+            setUnitAnim(selectedUnit, sprite, "attack");
+          }
+        } else {
+          // Need to move first — find closest reachable tile in attack range
+          const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
+          const reachable = findReachable(
+            tileMap,
+            selectedUnit.x,
+            selectedUnit.y,
+            range,
+            getBlockedTiles(selectedUnit.id),
+          );
+
+          // Filter to tiles that put enemy in attack range
+          const candidates = reachable.filter((t) => {
+            const d =
+              Math.abs(targetEnemy.x - t.x) + Math.abs(targetEnemy.y - t.y);
+            return d >= minAtkRange && d <= maxAtkRange;
+          });
+
+          if (candidates.length === 0) return;
+
+          // Sort by Manhattan distance from unit's current position (prefer shortest move)
+          candidates.sort(
+            (a, b) =>
+              Math.abs(a.x - selectedUnit!.x) +
+              Math.abs(a.y - selectedUnit!.y) -
+              (Math.abs(b.x - selectedUnit!.x) +
+                Math.abs(b.y - selectedUnit!.y)),
+          );
+
+          // Find first candidate with a valid path
+          let movePath: { x: number; y: number }[] = [];
+          for (const candidate of candidates) {
+            movePath = findPath(
+              tileMap,
+              selectedUnit.x,
+              selectedUnit.y,
+              candidate.x,
+              candidate.y,
+              range,
+              getBlockedTiles(selectedUnit.id),
+            );
+            if (movePath.length > 0) break;
+          }
+          if (movePath.length === 0) return;
+
+          const originX = selectedUnit.x;
+          const originY = selectedUnit.y;
+          startMovement(selectedUnit, movePath);
+          queueMoveForUnit(selectedUnit, movePath, originX, originY, [
+            attackCall,
+          ]);
+        }
+
+        selectedUnit = null;
+        rangeGfx.clear();
+        attackableTargets = [];
+        drawTrails();
+        return;
+      }
+
+      // Regular move (no attack)
       const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
       const path = findPath(
         tileMap,
@@ -963,9 +1185,26 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const originY = selectedUnit.y;
       startMovement(selectedUnit, path);
       queueMoveForUnit(selectedUnit, path, originX, originY);
-      selectedUnit = null;
-      rangeGfx.clear();
-      attackableTargets = [];
+
+      // Check if there are attack targets from the destination
+      const dest = path[path.length - 1];
+      const [minAtk, maxAtk] = UNIT_ATTACK_RANGE[selectedUnit.type] ?? [1, 1];
+      const enemies = useGameStore
+        .getState()
+        .units.filter((u) => u.team !== selectedUnit!.team);
+      const hasTargets = enemies.some((enemy) => {
+        const d = Math.abs(enemy.x - dest.x) + Math.abs(enemy.y - dest.y);
+        return d >= minAtk && d <= maxAtk;
+      });
+
+      if (hasTargets) {
+        // Keep selected — drawMoveRange will show attack targets from destination
+        drawMoveRange();
+      } else {
+        selectedUnit = null;
+        rangeGfx.clear();
+        attackableTargets = [];
+      }
       drawTrails();
     }
 
@@ -1000,10 +1239,15 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       path: { x: number; y: number }[],
       originX: number,
       originY: number,
+      extraCalls: {
+        contractAddress: string;
+        entrypoint: string;
+        calldata: string[];
+      }[] = [],
     ) {
       pendingMoveTransactions.add(unit.id);
 
-      const call = {
+      const moveCall = {
         contractAddress: ACTIONS_ADDRESS,
         entrypoint: "move_unit",
         calldata: [
@@ -1017,7 +1261,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const entry: QueuedMove = {
         unitId: unit.id,
         unitOnchainId: unit.onchainId,
-        call,
+        calls: [moveCall, ...extraCalls],
         originX,
         originY,
         destX: dest.x,
@@ -1047,7 +1291,18 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           if (ms.stepIndex >= ms.path.length) {
             sprite.x = ms.unit.x * TILE_PX + TILE_PX / 2;
             sprite.y = ms.unit.y * TILE_PX + TILE_PX / 2;
-            setUnitAnim(ms.unit, sprite, "idle");
+            // Play attack animation if this unit has a queued attack
+            const queued = useGameStore
+              .getState()
+              .moveQueue.find((m) => m.unitId === id);
+            const hasAttack = queued?.calls.some(
+              (c) => c.entrypoint === "attack",
+            );
+            if (hasAttack) {
+              setUnitAnim(ms.unit, sprite, "attack");
+            } else {
+              setUnitAnim(ms.unit, sprite, "idle");
+            }
             activeMovements.delete(id);
             // Start fade timer for remote trails
             const rt = remoteTrails.get(id);
@@ -1102,6 +1357,15 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     // --- Subscribe to store for real-time unit updates (other players' moves) ---
     const storeUnsub = useGameStore.subscribe((state, prevState) => {
+      // Deselect when requested (e.g. end turn)
+      if (state._deselectRequested && !prevState._deselectRequested) {
+        selectedUnit = null;
+        rangeGfx.clear();
+        attackableTargets = [];
+        drawSelection();
+        useGameStore.setState({ _deselectRequested: false });
+      }
+
       // Sync pendingMoveTransactions and sprites from moveQueue
       if (state.moveQueue !== prevState.moveQueue) {
         // If queue was cleared with fade requested (end-turn success), snapshot for fade-out
@@ -1142,13 +1406,46 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const newUnits = state.units;
       const newIds = new Set(newUnits.map((u) => u.id));
 
-      // Remove sprites for units that no longer exist
+      // Remove sprites for units that no longer exist — play death animation
       for (const [id, sprite] of unitSprites) {
         if (!newIds.has(id)) {
+          const prevUnit = prevState.units.find((u) => u.id === id);
+          unitSprites.delete(id);
+          activeMovements.delete(id);
+          if (selectedUnit?.id === id) selectedUnit = null;
+
+          if (prevUnit) {
+            const sheet = unitSheets[prevUnit.team];
+            const frames = sheet.animations[`${prevUnit.type}_death`];
+            if (frames) {
+              sprite.textures = frames;
+              sprite.loop = false;
+              sprite.animationSpeed = 0.05;
+              const absScaleX = Math.abs(sprite.scale.x);
+              sprite.scale.x =
+                prevUnit.facing === "left" ? -absScaleX : absScaleX;
+              sprite.gotoAndPlay(0);
+              sprite.onComplete = () => {
+                sprite.gotoAndStop(sprite.totalFrames - 1);
+                const fadeStart = Date.now();
+                const fadeCb = () => {
+                  const elapsed = Date.now() - fadeStart;
+                  const t = Math.min(elapsed / 1000, 1);
+                  sprite.alpha = 1 - t;
+                  if (t >= 1) {
+                    app.ticker.remove(fadeCb);
+                    vp.removeChild(sprite);
+                    sprite.destroy();
+                  }
+                };
+                app.ticker.add(fadeCb);
+              };
+              continue;
+            }
+          }
+
           vp.removeChild(sprite);
           sprite.destroy();
-          unitSprites.delete(id);
-          if (selectedUnit?.id === id) selectedUnit = null;
         }
       }
 

@@ -61,7 +61,8 @@ export default function HUD() {
   const [playerUsernames, setPlayerUsernames] = useState<
     Record<string, string>
   >({});
-  const [isEndingTurn, setIsEndingTurn] = useState(false);
+  const isEndingTurn = useGameStore((s) => s.isEndingTurn);
+  const setIsEndingTurn = useGameStore((s) => s.setIsEndingTurn);
   const controllerConnector = useMemo(
     () => ControllerConnector.fromConnectors(connectors),
     [connectors],
@@ -156,10 +157,12 @@ export default function HUD() {
       moveQueue: queue,
       updateUnit,
       clearQueue,
+      requestDeselect,
     } = useGameStore.getState();
+    requestDeselect();
     try {
       const calls = [
-        ...queue.map((m) => m.call),
+        ...queue.flatMap((m) => m.calls),
         {
           contractAddress: ACTIONS_ADDRESS,
           entrypoint: "end_turn",

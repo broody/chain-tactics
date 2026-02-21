@@ -64,7 +64,7 @@ export interface GamePlayerState {
 export interface QueuedMove {
   unitId: number;
   unitOnchainId: number;
-  call: { contractAddress: string; entrypoint: string; calldata: string[] };
+  calls: { contractAddress: string; entrypoint: string; calldata: string[] }[];
   originX: number;
   originY: number;
   destX: number;
@@ -108,6 +108,10 @@ interface GameStore {
   dequeueMove: (unitId: number) => void;
   clearQueue: (opts?: { fade?: boolean }) => void;
   _trailFadeRequested: boolean;
+  _deselectRequested: boolean;
+  requestDeselect: () => void;
+  isEndingTurn: boolean;
+  setIsEndingTurn: (v: boolean) => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -171,4 +175,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   _trailFadeRequested: false,
   clearQueue: (opts) =>
     set({ moveQueue: [], _trailFadeRequested: !!opts?.fade }),
+  _deselectRequested: false,
+  requestDeselect: () => set({ _deselectRequested: true }),
+  isEndingTurn: false,
+  setIsEndingTurn: (v) => set({ isEndingTurn: v }),
 }));
