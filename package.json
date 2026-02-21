@@ -6,7 +6,9 @@
     "dev:server": "pnpm --filter @chain-tactics/server dev",
     "dev": "pnpm run dev:client",
     "format": "pnpm --filter @chain-tactics/client format && cd contracts && scarb fmt",
-    "build": "pnpm --filter @chain-tactics/client build && pnpm --filter @chain-tactics/server build && cd contracts && scarb build"
+    "build": "pnpm --filter @chain-tactics/client build",
+    "build:contracts": "cd contracts && scarb build",
+    "build:all": "pnpm run build && pnpm run build:contracts"
   },
   "dependencies": {
     "react-router-dom": "^7.13.0"

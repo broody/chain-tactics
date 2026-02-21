@@ -7,7 +7,6 @@ import {
 } from "react";
 import { init, type SDK } from "@dojoengine/sdk";
 import type { Schema } from "./schema";
-import { schema } from "./schema";
 import { TORII_URL, WORLD_ADDRESS } from "./config";
 
 const DojoContext = createContext<SDK<Schema> | null>(null);
@@ -16,20 +15,17 @@ export function DojoProvider({ children }: PropsWithChildren) {
   const [sdk, setSdk] = useState<SDK<Schema> | null>(null);
 
   useEffect(() => {
-    init<Schema>(
-      {
-        client: {
-          worldAddress: WORLD_ADDRESS,
-          toriiUrl: TORII_URL,
-        },
-        domain: {
-          name: "hashfront",
-          version: "1.0.0",
-          chainId: "SN_SEPOLIA",
-        },
+    init<Schema>({
+      client: {
+        worldAddress: WORLD_ADDRESS,
+        toriiUrl: TORII_URL,
       },
-      schema,
-    )
+      domain: {
+        name: "hashfront",
+        version: "1.0.0",
+        chainId: "SN_SEPOLIA",
+      },
+    })
       .then(setSdk)
       .catch((err) => {
         console.error("Failed to initialize Dojo SDK:", err);

@@ -6,7 +6,7 @@ import {
   useProvider,
   useSendTransaction,
 } from "@starknet-react/core";
-import { CallData, byteArray, hash, num } from "starknet";
+import { byteArray, hash, num } from "starknet";
 import { lookupAddresses } from "@cartridge/controller";
 import { ControllerConnector } from "@cartridge/connector";
 import { useEffect, useMemo, useRef, useState } from "react";

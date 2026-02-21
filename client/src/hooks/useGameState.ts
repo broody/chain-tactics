@@ -10,7 +10,6 @@ import {
   useGameStore,
   TEAMS,
   UNIT_TYPES,
-  type GameInfo,
   type GamePlayerState,
 } from "../data/gameStore";
 import { GRID_SIZE, TileType } from "../game/types";
@@ -159,7 +158,7 @@ function buildTileMap(
     if (!tile) continue;
     const x = toNumber(tile.x);
     const y = toNumber(tile.y);
-    const tileType = parseTileType(tile.tile_type);
+    const tileType = parseTileType(tile.tile_type as string | number);
     const idx = y * GRID_SIZE + x;
     if (idx >= 0 && idx < tileMap.length) {
       tileMap[idx] = terrainLookup[tileType] ?? TileType.Grass;
@@ -171,7 +170,9 @@ function buildTileMap(
     if (!building) continue;
     const x = toNumber(building.x);
     const y = toNumber(building.y);
-    const buildingType = parseBuildingType(building.building_type);
+    const buildingType = parseBuildingType(
+      building.building_type as string | number,
+    );
     const idx = y * GRID_SIZE + x;
     if (idx < 0 || idx >= tileMap.length) continue;
     if (buildingType === 1) tileMap[idx] = TileType.City;

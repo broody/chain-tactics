@@ -303,9 +303,25 @@ a {
   animation: ecg-sweep 2s linear infinite;
 }
 @keyframes intermittent-glitch {
-  0%, 15.5%, 16.5%, 17%, 46.5%, 47.5%, 70.5%, 71.5%, 100% { opacity: 1; }
-  16%, 47%, 71% { opacity: 0; }
-  16.25% { opacity: 0.2; }
+  0%,
+  15.5%,
+  16.5%,
+  17%,
+  46.5%,
+  47.5%,
+  70.5%,
+  71.5%,
+  100% {
+    opacity: 1;
+  }
+  16%,
+  47%,
+  71% {
+    opacity: 0;
+  }
+  16.25% {
+    opacity: 0.2;
+  }
 }
 
 .animate-intermittent-glitch {
