@@ -14,7 +14,7 @@ import {
   Spritesheet,
 } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { tileMap, units } from "../data/gameStore";
+import { useGameStore } from "../data/gameStore";
 import type { Unit } from "../data/gameStore";
 import { GRID_SIZE, TILE_PX, TILE_COLORS, TileType } from "../game/types";
 import { terrainAtlas } from "../game/spritesheets/terrain";
@@ -59,6 +59,10 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
   const init = useCallback(async () => {
     if (!containerRef.current || appRef.current) return;
+
+    // Capture current store state for initial rendering
+    const tileMap = useGameStore.getState().tileMap;
+    const initialUnits = useGameStore.getState().units;
 
     const app = new Application();
     await app.init({
@@ -389,7 +393,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       sprite.scale.x = unit.facing === "left" ? -absScaleX : absScaleX;
     }
 
-    for (const unit of units) {
+    for (const unit of initialUnits) {
       const sprite = createUnitSprite(unit);
       unitSprites.set(unit.id, sprite);
     }
@@ -449,7 +453,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     // --- Blocked tiles from unit positions ---
     function getBlockedTiles(excludeId: number): Set<number> {
       const blocked = new Set<number>();
-      for (const u of units) {
+      for (const u of useGameStore.getState().units) {
         if (u.id === excludeId) continue;
         blocked.add(u.y * GRID_SIZE + u.x);
       }
@@ -542,7 +546,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         return;
 
       // Find unit at clicked tile — click empty space to deselect
-      const clicked = units.find(
+      const clicked = useGameStore.getState().units.find(
         (u) =>
           u.x === gridX &&
           u.y === gridY &&
@@ -770,12 +774,69 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     });
     ro.observe(containerRef.current);
 
+    // --- Subscribe to store for real-time unit updates (other players' moves) ---
+    const storeUnsub = useGameStore.subscribe((state, prevState) => {
+      if (state.units === prevState.units) return;
+
+      const newUnits = state.units;
+      const newIds = new Set(newUnits.map((u) => u.id));
+
+      // Remove sprites for units that no longer exist
+      for (const [id, sprite] of unitSprites) {
+        if (!newIds.has(id)) {
+          vp.removeChild(sprite);
+          sprite.destroy();
+          unitSprites.delete(id);
+          if (selectedUnit?.id === id) selectedUnit = null;
+        }
+      }
+
+      // Add sprites for new units, animate position changes for existing
+      for (const unit of newUnits) {
+        const existing = unitSprites.get(unit.id);
+        if (!existing) {
+          // New unit from subscription
+          const sprite = createUnitSprite(unit);
+          unitSprites.set(unit.id, sprite);
+        } else if (!activeMovements.has(unit.id)) {
+          // Check if position changed compared to previous state
+          const prevUnit = prevState.units.find((u) => u.id === unit.id);
+          const moved =
+            prevUnit &&
+            (prevUnit.x !== unit.x || prevUnit.y !== unit.y);
+
+          if (moved) {
+            // Animate along a pathfound route from old to new position
+            const path = findPath(
+              tileMap,
+              prevUnit.x,
+              prevUnit.y,
+              unit.x,
+              unit.y,
+              100, // generous range — move already confirmed on-chain
+              getBlockedTiles(unit.id),
+            );
+            if (path.length > 0) {
+              // Create a temporary unit at the old position for the movement system
+              const animUnit: Unit = { ...prevUnit };
+              startMovement(animUnit, path);
+            } else {
+              // No path found — teleport as fallback
+              existing.x = unit.x * TILE_PX + TILE_PX / 2;
+              existing.y = unit.y * TILE_PX + TILE_PX / 2;
+            }
+          }
+        }
+      }
+    });
+
     // Call onLoaded after everything is set up
     if (onLoaded) {
       setTimeout(onLoaded, 500); // Slight delay to ensure first frame is actually visible
     }
 
     cleanupRef.current = () => {
+      storeUnsub();
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
       canvas.removeEventListener("contextmenu", onContextMenu);

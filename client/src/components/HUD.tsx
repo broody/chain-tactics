@@ -8,11 +8,11 @@ import {
 import { ControllerConnector } from "@cartridge/connector";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useClient } from "urql";
 import { ACTIONS_ADDRESS } from "../StarknetProvider";
 import { useToast } from "./Toast";
 import { PixelButton } from "./PixelButton";
 import { PixelPanel } from "./PixelPanel";
+import { useGameStore } from "../data/gameStore";
 
 const TILE_PX = 24;
 const TERRAIN_IMAGE = "/tilesets/terrain.png";
@@ -23,28 +23,6 @@ const LEGEND: { label: string; x: number; y: number }[] = [
   { label: "Road", x: TILE_PX * 6, y: TILE_PX * 8 },
   { label: "Tree", x: TILE_PX * 6, y: TILE_PX * 4 },
 ];
-
-interface GraphEdge<T> {
-  node: T;
-}
-
-interface TurnStatusQueryResult {
-  hashfrontGameModels: {
-    edges: GraphEdge<{ name: string; current_player: string | number; is_test_mode: boolean }>[];
-  };
-  hashfrontPlayerStateModels: {
-    edges: GraphEdge<{ player_id: string | number; address: string }>[];
-  };
-}
-
-function toNumber(value: string | number | null | undefined): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-  return 0;
-}
 
 function normalizeAddressHex(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -63,7 +41,6 @@ function shortTxHash(txHash: string): string {
 export default function HUD() {
   const { id } = useParams<{ id: string }>();
   const gameId = parseInt(id || "1", 10) || 1;
-  const graphqlClient = useClient();
   const explorer = useExplorer();
   const { provider } = useProvider();
   const { sendAsync: sendTransaction } = useSendTransaction({});
@@ -72,15 +49,29 @@ export default function HUD() {
   const { connect, connectors } = useConnect();
   const { address } = useAccount();
   const [username, setUsername] = useState<string>();
-  const [gameName, setGameName] = useState<string>("");
-  const [currentPlayer, setCurrentPlayer] = useState<number | null>(null);
-  const [myPlayerId, setMyPlayerId] = useState<number | null>(null);
-  const [isTestMode, setIsTestMode] = useState(false);
   const [isEndingTurn, setIsEndingTurn] = useState(false);
   const controllerConnector = useMemo(
     () => ControllerConnector.fromConnectors(connectors),
     [connectors],
   );
+
+  // Read game state from Zustand store (reactive — updates via gRPC subscriptions)
+  const game = useGameStore((s) => s.game);
+  const players = useGameStore((s) => s.players);
+
+  const currentPlayer = game?.currentPlayer ?? null;
+  const gameName = game?.name ?? "";
+  const isTestMode = game?.isTestMode ?? false;
+
+  const myPlayerId = useMemo(() => {
+    if (!address) return null;
+    const normalizedAddress = normalizeAddressHex(address);
+    const myPlayer = players.find(
+      (p) => normalizeAddressHex(p.address) === normalizedAddress,
+    );
+    return myPlayer?.playerId ?? null;
+  }, [address, players]);
+
   const canEndTurn =
     currentPlayer !== null &&
     (isTestMode || (myPlayerId !== null && myPlayerId === currentPlayer));
@@ -89,74 +80,6 @@ export default function HUD() {
     if (!address) return;
     controllerConnector.username()?.then(setUsername);
   }, [address, controllerConnector]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadTurnStatus() {
-      try {
-        const query = `
-          query {
-            hashfrontGameModels(where: {game_idEQ: ${gameId}}) {
-              edges {
-                node {
-                  name
-                  current_player
-                  is_test_mode
-                }
-              }
-            }
-            hashfrontPlayerStateModels(where: {game_idEQ: ${gameId}}) {
-              edges {
-                node {
-                  player_id
-                  address
-                }
-              }
-            }
-          }
-        `;
-
-        const result = await graphqlClient
-          .query<TurnStatusQueryResult>(query, undefined, {
-            requestPolicy: "network-only",
-          })
-          .toPromise();
-
-        if (!active || result.error || !result.data) return;
-
-        const gameNode = result.data.hashfrontGameModels.edges[0]?.node;
-        setGameName(gameNode?.name ?? "");
-        const nextCurrentPlayer = toNumber(gameNode?.current_player);
-        setCurrentPlayer(nextCurrentPlayer > 0 ? nextCurrentPlayer : null);
-        setIsTestMode(gameNode?.is_test_mode ?? false);
-
-        if (!address) {
-          setMyPlayerId(null);
-          return;
-        }
-
-        const normalizedAddress = normalizeAddressHex(address);
-        const myPlayer = result.data.hashfrontPlayerStateModels.edges.find(
-          (edge) =>
-            normalizeAddressHex(edge.node.address) === normalizedAddress,
-        )?.node;
-        setMyPlayerId(myPlayer ? toNumber(myPlayer.player_id) : null);
-      } catch (error) {
-        console.error("Failed to load turn status:", error);
-      }
-    }
-
-    void loadTurnStatus();
-    const intervalId = window.setInterval(() => {
-      void loadTurnStatus();
-    }, 2000);
-
-    return () => {
-      active = false;
-      window.clearInterval(intervalId);
-    };
-  }, [address, gameId, graphqlClient]);
 
   async function handleEndTurn() {
     if (!address) {
