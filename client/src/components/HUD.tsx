@@ -6,13 +6,21 @@ import {
   useSendTransaction,
 } from "@starknet-react/core";
 import { ControllerConnector } from "@cartridge/connector";
+import { lookupAddresses } from "@cartridge/controller";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ACTIONS_ADDRESS } from "../StarknetProvider";
 import { useToast } from "./Toast";
 import { PixelButton } from "./PixelButton";
 import { PixelPanel } from "./PixelPanel";
-import { useGameStore } from "../data/gameStore";
+import { useGameStore, TEAMS } from "../data/gameStore";
+
+const PLAYER_COLORS: Record<string, string> = {
+  red: "#ef4444",
+  blue: "#3b82f6",
+  green: "#22c55e",
+  yellow: "#eab308",
+};
 
 const TILE_PX = 24;
 const TERRAIN_IMAGE = "/tilesets/terrain.png";
@@ -49,6 +57,9 @@ export default function HUD() {
   const { connect, connectors } = useConnect();
   const { address } = useAccount();
   const [username, setUsername] = useState<string>();
+  const [playerUsernames, setPlayerUsernames] = useState<
+    Record<string, string>
+  >({});
   const [isEndingTurn, setIsEndingTurn] = useState(false);
   const controllerConnector = useMemo(
     () => ControllerConnector.fromConnectors(connectors),
@@ -80,6 +91,52 @@ export default function HUD() {
     if (!address) return;
     controllerConnector.username()?.then(setUsername);
   }, [address, controllerConnector]);
+
+  useEffect(() => {
+    if (players.length === 0) return;
+    let active = true;
+
+    async function loadUsernames() {
+      try {
+        const addressMap = await lookupAddresses(
+          players.map((p) => p.address),
+        );
+        if (!active) return;
+
+        const normalizedLookup: Record<string, string> = {};
+        for (const [addressKey, name] of addressMap.entries()) {
+          const normalized = normalizeAddressHex(addressKey);
+          if (normalized) normalizedLookup[normalized] = name;
+        }
+
+        const result: Record<string, string> = {};
+        for (const player of players) {
+          const normalized = normalizeAddressHex(player.address);
+          if (!normalized) continue;
+          const name = normalizedLookup[normalized];
+          if (name) result[player.address] = name;
+        }
+        setPlayerUsernames(result);
+      } catch (error) {
+        console.error("Failed to lookup player usernames:", error);
+      }
+    }
+
+    void loadUsernames();
+    return () => {
+      active = false;
+    };
+  }, [players]);
+
+  const currentTurnPlayer = useMemo(() => {
+    if (currentPlayer === null) return null;
+    const player = players.find((p) => p.playerId === currentPlayer);
+    if (!player) return null;
+    const team = TEAMS[currentPlayer] ?? "blue";
+    const color = PLAYER_COLORS[team] ?? "#ffffff";
+    const name = playerUsernames[player.address];
+    return { playerId: currentPlayer, team, color, name, address: player.address };
+  }, [currentPlayer, players, playerUsernames]);
 
   async function handleEndTurn() {
     if (!address) {
@@ -208,24 +265,25 @@ export default function HUD() {
           <div className="flex flex-col gap-2 mt-2 text-xs uppercase tracking-widest">
             <div>
               CURRENT TURN:{" "}
-              <span className="font-bold">
-                {currentPlayer === null ? "UNKNOWN" : `P${currentPlayer}`}
-              </span>
+              {currentTurnPlayer ? (
+                <span className="font-bold" style={{ color: currentTurnPlayer.color }}>
+                  {currentTurnPlayer.name ??
+                    `${currentTurnPlayer.address.slice(0, 6)}...${currentTurnPlayer.address.slice(-4)}`}
+                </span>
+              ) : (
+                <span className="font-bold">UNKNOWN</span>
+              )}
             </div>
-            <div>
-              MY PLAYER ID:{" "}
-              <span className="font-bold">
-                {myPlayerId === null ? "NOT JOINED" : `P${myPlayerId}`}
-              </span>
-            </div>
-            <PixelButton
-              variant="blue"
-              onClick={handleEndTurn}
-              disabled={isEndingTurn || !address || !canEndTurn}
-              className="!mt-2"
-            >
-              {isEndingTurn ? "ENDING..." : "END TURN"}
-            </PixelButton>
+            {myPlayerId !== null && (
+              <PixelButton
+                variant="blue"
+                onClick={handleEndTurn}
+                disabled={isEndingTurn || !address || !canEndTurn}
+                className="!mt-2"
+              >
+                {isEndingTurn ? "ENDING..." : "END TURN"}
+              </PixelButton>
+            )}
           </div>
         </PixelPanel>
       </div>

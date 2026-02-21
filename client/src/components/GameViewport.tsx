@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
+  useAccount,
   useExplorer,
   useProvider,
   useSendTransaction,
@@ -14,7 +15,7 @@ import {
   Spritesheet,
 } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { useGameStore } from "../data/gameStore";
+import { useGameStore, TEAMS } from "../data/gameStore";
 import type { Unit } from "../data/gameStore";
 import { GRID_SIZE, TILE_PX, TILE_COLORS, TileType } from "../game/types";
 import { terrainAtlas } from "../game/spritesheets/terrain";
@@ -25,6 +26,7 @@ import {
   unitAtlasYellow,
 } from "../game/spritesheets/units";
 import { findPath } from "../game/pathfinding";
+import { num } from "starknet";
 import { ACTIONS_ADDRESS } from "../StarknetProvider";
 import { useToast } from "./Toast";
 
@@ -35,9 +37,28 @@ function shortTxHash(txHash: string): string {
   return `${txHash.slice(0, 8)}...${txHash.slice(-6)}`;
 }
 
+function isPlayerInGame(address: string | undefined): boolean {
+  if (!address) return false;
+  const hex = num.toHex(address);
+  return useGameStore
+    .getState()
+    .players.some((p) => num.toHex(p.address) === hex);
+}
+
+function getMyTeam(address: string | undefined): string | null {
+  if (!address) return null;
+  const hex = num.toHex(address);
+  const player = useGameStore
+    .getState()
+    .players.find((p) => num.toHex(p.address) === hex);
+  if (!player) return null;
+  return TEAMS[player.playerId] ?? null;
+}
+
 export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
   const { id } = useParams<{ id: string }>();
   const gameId = Number.parseInt(id || "", 10);
+  const { address } = useAccount();
   const explorer = useExplorer();
   const { provider } = useProvider();
   const { sendAsync: sendMoveUnit } = useSendTransaction({});
@@ -46,6 +67,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
   const sendMoveUnitRef = useRef(sendMoveUnit);
   const toastRef = useRef(toast);
   const gameIdRef = useRef(gameId);
+  const addressRef = useRef(address);
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
@@ -55,7 +77,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     sendMoveUnitRef.current = sendMoveUnit;
     toastRef.current = toast;
     gameIdRef.current = gameId;
-  }, [gameId, provider, sendMoveUnit, toast]);
+    addressRef.current = address;
+  }, [address, gameId, provider, sendMoveUnit, toast]);
 
   const init = useCallback(async () => {
     if (!containerRef.current || appRef.current) return;
@@ -540,20 +563,29 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     // --- Left-click selection (via pixi-viewport 'clicked' to avoid drag conflicts) ---
     function onVpClicked(e: { world: { x: number; y: number } }) {
+      if (!isPlayerInGame(addressRef.current)) return;
+
       const gridX = Math.floor(e.world.x / TILE_PX);
       const gridY = Math.floor(e.world.y / TILE_PX);
       if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE)
         return;
 
       // Find unit at clicked tile — click empty space to deselect
-      const clicked = useGameStore.getState().units.find(
+      const { units, game } = useGameStore.getState();
+      const myTeam = getMyTeam(addressRef.current);
+      const clicked = units.find(
         (u) =>
           u.x === gridX &&
           u.y === gridY &&
           !activeMovements.has(u.id) &&
           !pendingMoveTransactions.has(u.id),
       );
-      selectedUnit = clicked ?? null;
+      // Only allow selecting own units unless test mode is on
+      if (clicked && !game?.isTestMode && clicked.team !== myTeam) {
+        selectedUnit = null;
+      } else {
+        selectedUnit = clicked ?? null;
+      }
       drawSelection();
       pathGfx.clear();
       lastPathGridX = -1;
@@ -562,10 +594,6 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     vp.on("clicked", onVpClicked);
 
     // --- Right-click movement ---
-    function onContextMenu(ev: MouseEvent) {
-      ev.preventDefault();
-    }
-
     function startMovement(unit: Unit, path: { x: number; y: number }[]) {
       if (activeMovements.has(unit.id)) return; // already moving
       if (pendingMoveTransactions.has(unit.id)) return; // waiting on tx
@@ -596,14 +624,11 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       }
     }
 
-    function onPointerDown(ev: PointerEvent) {
-      if (ev.button !== 2) return; // right-click only
+    function tryMoveSelectedUnit(screenX: number, screenY: number) {
+      if (!isPlayerInGame(addressRef.current)) return;
       if (!selectedUnit) return;
       if (pendingMoveTransactions.has(selectedUnit.id)) return;
 
-      const rect = canvas.getBoundingClientRect();
-      const screenX = ev.clientX - rect.left;
-      const screenY = ev.clientY - rect.top;
       const worldPos = vp.toWorld(screenX, screenY);
       const gridX = Math.floor(worldPos.x / TILE_PX);
       const gridY = Math.floor(worldPos.y / TILE_PX);
@@ -628,6 +653,18 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       startMovement(selectedUnit, path);
       void submitMoveTransaction(selectedUnit, path, originX, originY);
       pathGfx.clear();
+    }
+
+    function onContextMenu(ev: MouseEvent) {
+      ev.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      tryMoveSelectedUnit(ev.clientX - rect.left, ev.clientY - rect.top);
+    }
+
+    function onPointerDown(ev: PointerEvent) {
+      if (ev.button !== 2) return; // right-click only
+      const rect = canvas.getBoundingClientRect();
+      tryMoveSelectedUnit(ev.clientX - rect.left, ev.clientY - rect.top);
     }
 
     canvas.addEventListener("contextmenu", onContextMenu);
