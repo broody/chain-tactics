@@ -290,7 +290,7 @@ export default function HUD() {
                 <span className="font-bold">UNKNOWN</span>
               )}
             </div>
-            {myPlayerId !== null && myPlayerId === currentPlayer && (
+            {canEndTurn && (
               <PixelButton
                 variant="blue"
                 onClick={handleEndTurn}

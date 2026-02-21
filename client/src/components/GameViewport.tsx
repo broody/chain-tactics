@@ -371,6 +371,13 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       yellow: yellowSheet,
     };
 
+    const TEAM_COLORS: Record<string, number> = {
+      blue: 0x4a9eff,
+      red: 0xff4a4a,
+      green: 0x4aff4a,
+      yellow: 0xffdd4a,
+    };
+
     // PRD unit types: Infantry (rifle), Tank (tank), Ranger (artillery)
     const UNIT_MOVE_RANGE: Record<string, number> = {
       rifle: 3, // Infantry
@@ -443,13 +450,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const cx = sprite.x;
       const cy = sprite.y;
       const len = 6 * pulse; // corner arm length
-      const teamColors: Record<string, number> = {
-        blue: 0x4a9eff,
-        red: 0xff4a4a,
-        green: 0x4aff4a,
-        yellow: 0xffdd4a,
-      };
-      const color = teamColors[selectedUnit.team] ?? 0xff8c00;
+      const color = TEAM_COLORS[selectedUnit.team] ?? 0xff8c00;
       const width = 2;
 
       // Top-left corner
@@ -522,11 +523,12 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       );
 
       const reachableSet = new Set(reachable.map((t) => `${t.x},${t.y}`));
+      const rangeColor = TEAM_COLORS[selectedUnit.team] ?? 0xffffff;
 
       for (const tile of reachable) {
         rangeGfx
           .rect(tile.x * TILE_PX, tile.y * TILE_PX, TILE_PX, TILE_PX)
-          .fill({ color: 0xffffff, alpha: 0.15 });
+          .fill({ color: rangeColor, alpha: 0.1 });
 
         // Draw border edges where the range meets non-reachable tiles
         const x = tile.x * TILE_PX;
@@ -535,25 +537,25 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           rangeGfx
             .moveTo(x, y)
             .lineTo(x + TILE_PX, y)
-            .stroke({ color: 0xffffff, alpha: 0.25, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
         }
         if (!reachableSet.has(`${tile.x},${tile.y + 1}`)) {
           rangeGfx
             .moveTo(x, y + TILE_PX)
             .lineTo(x + TILE_PX, y + TILE_PX)
-            .stroke({ color: 0xffffff, alpha: 0.25, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
         }
         if (!reachableSet.has(`${tile.x - 1},${tile.y}`)) {
           rangeGfx
             .moveTo(x, y)
             .lineTo(x, y + TILE_PX)
-            .stroke({ color: 0xffffff, alpha: 0.25, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
         }
         if (!reachableSet.has(`${tile.x + 1},${tile.y}`)) {
           rangeGfx
             .moveTo(x + TILE_PX, y)
             .lineTo(x + TILE_PX, y + TILE_PX)
-            .stroke({ color: 0xffffff, alpha: 0.25, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
         }
       }
     }
@@ -593,10 +595,16 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       // Find unit at clicked tile — click empty space to deselect
       const { units, game } = useGameStore.getState();
       const myTeam = getMyTeam(addressRef.current);
+      const currentTeam =
+        game?.currentPlayer !== undefined
+          ? (TEAMS[game.currentPlayer] ?? null)
+          : null;
       const isMyTurn =
-        myTeam !== null &&
-        game?.currentPlayer !== undefined &&
-        TEAMS[game.currentPlayer] === myTeam;
+        currentTeam !== null &&
+        (game?.isTestMode
+          ? isPlayerInGame(addressRef.current)
+          : myTeam === currentTeam);
+      const allowedTeam = game?.isTestMode ? currentTeam : myTeam;
       const clicked = units.find(
         (u) =>
           u.x === gridX &&
@@ -604,8 +612,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           !activeMovements.has(u.id) &&
           !pendingMoveTransactions.has(u.id),
       );
-      // Only allow selecting own units when it's my turn
-      if (!isMyTurn || (clicked && clicked.team !== myTeam)) {
+      // Only allow selecting units of the current turn's team
+      if (!isMyTurn || (clicked && clicked.team !== allowedTeam)) {
         selectedUnit = null;
       } else {
         selectedUnit = clicked ?? null;
@@ -648,8 +656,15 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     function tryMoveSelectedUnit(screenX: number, screenY: number) {
       if (!selectedUnit) return;
-      const myTeam = getMyTeam(addressRef.current);
-      if (!myTeam || selectedUnit.team !== myTeam) return;
+      const { game } = useGameStore.getState();
+      const currentTeam =
+        game?.currentPlayer !== undefined
+          ? (TEAMS[game.currentPlayer] ?? null)
+          : null;
+      const allowedTeam = game?.isTestMode
+        ? currentTeam
+        : getMyTeam(addressRef.current);
+      if (!allowedTeam || selectedUnit.team !== allowedTeam) return;
       if (pendingMoveTransactions.has(selectedUnit.id)) return;
 
       const worldPos = vp.toWorld(screenX, screenY);
