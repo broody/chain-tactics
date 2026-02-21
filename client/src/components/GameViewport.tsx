@@ -361,6 +361,13 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       artillery: 2, // Ranger
     };
 
+    // Attack range: [min, max] Manhattan distance
+    const UNIT_ATTACK_RANGE: Record<string, [number, number]> = {
+      rifle: [1, 1], // Infantry: melee
+      tank: [1, 1], // Tank: melee
+      artillery: [2, 3], // Ranger: ranged (min range 2)
+    };
+
     // --- Move trail overlay (added before units so trails render underneath) ---
     const trailGfx = new Graphics();
     vp.addChild(trailGfx);
@@ -430,7 +437,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const cx = sprite.x;
       const cy = sprite.y;
       const len = 6 * pulse; // corner arm length
-      const color = TEAM_COLORS[selectedUnit.team] ?? 0xff8c00;
+      const color = 0x00bb00; // Tactical darker green for selection
       const width = 2;
 
       // Top-left corner
@@ -507,7 +514,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     ) {
       for (const m of queue) {
         const unit = units.find((u) => u.id === m.unitId);
-        const color = TEAM_COLORS[unit?.team ?? "blue"] ?? 0xffffff;
+        const color = 0x000000; // Uniform dark color for all trails
         const unitType = unit?.type ?? "rifle";
 
         if (m.path.length < 2) continue;
@@ -680,6 +687,12 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     vp.addChild(rangeGfx);
     vp.addChild(hoverGfx);
 
+    const targetGfx = new Graphics();
+    vp.addChild(targetGfx);
+
+    let attackableTargets: Unit[] = [];
+    let hoveredEnemy: Unit | null = null;
+
     const canvas = app.canvas as HTMLCanvasElement;
 
     function unitHasMoved(unit: Unit): boolean {
@@ -691,6 +704,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     function drawMoveRange() {
       rangeGfx.clear();
+      attackableTargets = [];
       if (!selectedUnit || activeMovements.has(selectedUnit.id)) return;
       if (pendingMoveTransactions.has(selectedUnit.id)) return;
       if (useGameStore.getState().game?.state !== "Playing") return;
@@ -706,12 +720,12 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       );
 
       const reachableSet = new Set(reachable.map((t) => `${t.x},${t.y}`));
-      const rangeColor = TEAM_COLORS[selectedUnit.team] ?? 0xffffff;
+      const rangeColor = 0xecf0f1; // Tactical light gray/off-white for move range
 
       for (const tile of reachable) {
         rangeGfx
           .rect(tile.x * TILE_PX, tile.y * TILE_PX, TILE_PX, TILE_PX)
-          .fill({ color: rangeColor, alpha: 0.1 });
+          .fill({ color: rangeColor, alpha: 0.2 });
 
         // Draw border edges where the range meets non-reachable tiles
         const x = tile.x * TILE_PX;
@@ -720,25 +734,93 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           rangeGfx
             .moveTo(x, y)
             .lineTo(x + TILE_PX, y)
-            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.4, width: 1 });
         }
         if (!reachableSet.has(`${tile.x},${tile.y + 1}`)) {
           rangeGfx
             .moveTo(x, y + TILE_PX)
             .lineTo(x + TILE_PX, y + TILE_PX)
-            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.4, width: 1 });
         }
         if (!reachableSet.has(`${tile.x - 1},${tile.y}`)) {
           rangeGfx
             .moveTo(x, y)
             .lineTo(x, y + TILE_PX)
-            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.4, width: 1 });
         }
         if (!reachableSet.has(`${tile.x + 1},${tile.y}`)) {
           rangeGfx
             .moveTo(x + TILE_PX, y)
             .lineTo(x + TILE_PX, y + TILE_PX)
-            .stroke({ color: rangeColor, alpha: 0.2, width: 1 });
+            .stroke({ color: rangeColor, alpha: 0.4, width: 1 });
+        }
+      }
+
+      // Find attackable enemy units from any reachable position (including current)
+      const [minAtkRange, maxAtkRange] = UNIT_ATTACK_RANGE[
+        selectedUnit.type
+      ] ?? [1, 1];
+      const allPositions = [
+        { x: selectedUnit.x, y: selectedUnit.y },
+        ...reachable,
+      ];
+      const enemies = useGameStore
+        .getState()
+        .units.filter((u) => u.team !== selectedUnit!.team);
+      for (const enemy of enemies) {
+        for (const pos of allPositions) {
+          const dist = Math.abs(enemy.x - pos.x) + Math.abs(enemy.y - pos.y);
+          if (dist >= minAtkRange && dist <= maxAtkRange) {
+            attackableTargets.push(enemy);
+            break;
+          }
+        }
+      }
+    }
+
+    function drawAttackTargets() {
+      targetGfx.clear();
+      if (attackableTargets.length === 0 || !selectedUnit) return;
+
+      const color = 0xff4a4a; // Tactical Red
+      const pulse = 1 + Math.sin(selectPulse * 3) * 0.08;
+
+      for (const enemy of attackableTargets) {
+        const isHovered = hoveredEnemy === enemy;
+        const cx = enemy.x * TILE_PX + TILE_PX / 2;
+        const cy = enemy.y * TILE_PX + TILE_PX / 2;
+
+        const size = (TILE_PX / 2 - 3) * (isHovered ? pulse : 1);
+        const alpha = isHovered ? 1.0 : 0.4;
+        const bLen = 5;
+
+        targetGfx
+          // Top Left
+          .moveTo(cx - size, cy - size + bLen)
+          .lineTo(cx - size, cy - size)
+          .lineTo(cx - size + bLen, cy - size)
+          // Top Right
+          .moveTo(cx + size, cy - size + bLen)
+          .lineTo(cx + size, cy - size)
+          .lineTo(cx + size - bLen, cy - size)
+          // Bottom Left
+          .moveTo(cx - size, cy + size - bLen)
+          .lineTo(cx - size, cy + size)
+          .lineTo(cx - size + bLen, cy + size)
+          // Bottom Right
+          .moveTo(cx + size, cy + size - bLen)
+          .lineTo(cx + size, cy + size)
+          .lineTo(cx + size - bLen, cy + size)
+          .stroke({ color, width: 2, alpha });
+
+        if (isHovered) {
+          const cSize = 3;
+          targetGfx
+            .moveTo(cx - cSize, cy)
+            .lineTo(cx + cSize, cy)
+            .moveTo(cx, cy - cSize)
+            .lineTo(cx, cy + cSize)
+            .stroke({ color, width: 1.5, alpha: 1.0 });
         }
       }
     }
@@ -752,15 +834,21 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const gridY = Math.floor(worldPos.y / TILE_PX);
 
       hoverGfx.clear();
+      hoveredEnemy = null;
       if (gridX >= 0 && gridX < GRID_SIZE && gridY >= 0 && gridY < GRID_SIZE) {
         hoverGfx
           .rect(gridX * TILE_PX, gridY * TILE_PX, TILE_PX, TILE_PX)
           .fill({ color: 0xffffff, alpha: 0.2 });
+
+        // Track if hovering over an attackable target
+        hoveredEnemy =
+          attackableTargets.find((u) => u.x === gridX && u.y === gridY) || null;
       }
     }
 
     function onPointerLeave() {
       hoverGfx.clear();
+      hoveredEnemy = null;
     }
 
     canvas.addEventListener("pointermove", onPointerMove);
@@ -877,6 +965,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       queueMoveForUnit(selectedUnit, path, originX, originY);
       selectedUnit = null;
       rangeGfx.clear();
+      attackableTargets = [];
       drawTrails();
     }
 
@@ -998,6 +1087,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       // Update selection highlight with pulse
       selectPulse += ticker.deltaTime * 0.15;
       drawSelection();
+      drawAttackTargets();
       drawTrails();
     };
 
