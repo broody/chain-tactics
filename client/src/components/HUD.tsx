@@ -177,7 +177,7 @@ export default function HUD() {
       for (const m of queue) {
         updateUnit(m.unitOnchainId, { x: m.destX, y: m.destY });
       }
-      clearQueue();
+      clearQueue({ fade: true });
       toast("Turn ended.", "success", {
         linkUrl: explorer.transaction(tx.transaction_hash),
         linkLabel: `TX ${shortTxHash(tx.transaction_hash)}`,

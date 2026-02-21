@@ -361,6 +361,10 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       artillery: 2, // Ranger
     };
 
+    // --- Move trail overlay (added before units so trails render underneath) ---
+    const trailGfx = new Graphics();
+    vp.addChild(trailGfx);
+
     // --- Render units ---
     const unitSprites = new Map<number, AnimatedSprite>();
 
@@ -476,51 +480,198 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     }
     const activeMovements = new Map<number, MoveState>();
 
-    // --- Move trail overlay ---
-    const trailGfx = new Graphics();
-    vp.addChild(trailGfx);
+    // Fading trail state: snapshot of queue + units when cleared
+    const TRAIL_DELAY_MS = 3000;
+    const TRAIL_FADE_MS = 1000;
+    let fadingTrails: {
+      queue: QueuedMove[];
+      units: Unit[];
+      startTime: number;
+    } | null = null;
+
+    // Remote (subscription) movement trails: track path + fade state
+    interface RemoteTrail {
+      unitId: number;
+      originX: number;
+      originY: number;
+      path: { x: number; y: number }[];
+      unit: Unit;
+      fadeStart: number | null; // null = still moving
+    }
+    const remoteTrails = new Map<number, RemoteTrail>();
+
+    function drawTrailsForQueue(
+      queue: QueuedMove[],
+      units: Unit[],
+      alphaMul: number,
+    ) {
+      for (const m of queue) {
+        const unit = units.find((u) => u.id === m.unitId);
+        const color = TEAM_COLORS[unit?.team ?? "blue"] ?? 0xffffff;
+        const unitType = unit?.type ?? "rifle";
+
+        if (m.path.length < 2) continue;
+
+        // Compute max drawable distance based on animation progress
+        const ms = activeMovements.get(m.unitId);
+        let maxDist = Infinity; // no active movement = draw full trail
+        if (ms) {
+          maxDist = 0;
+          for (let s = 0; s < ms.stepIndex && s < ms.path.length; s++) {
+            const prev =
+              s === 0 ? { x: ms.originX, y: ms.originY } : ms.path[s - 1];
+            const cur = ms.path[s];
+            maxDist += Math.sqrt(
+              ((cur.x - prev.x) * TILE_PX) ** 2 +
+                ((cur.y - prev.y) * TILE_PX) ** 2,
+            );
+          }
+          if (ms.stepIndex < ms.path.length) {
+            const prev =
+              ms.stepIndex === 0
+                ? { x: ms.originX, y: ms.originY }
+                : ms.path[ms.stepIndex - 1];
+            const cur = ms.path[ms.stepIndex];
+            const stepDist = Math.sqrt(
+              ((cur.x - prev.x) * TILE_PX) ** 2 +
+                ((cur.y - prev.y) * TILE_PX) ** 2,
+            );
+            maxDist += stepDist * ms.progress;
+          }
+        }
+
+        if (unitType === "tank" || unitType === "artillery") {
+          const rungSpacing = 4;
+          const trackOffset = 5;
+          const rungHalfWidth = 2.5;
+          let totalDist = 0;
+          let rungIndex = 0;
+          for (let i = 0; i < m.path.length - 1; i++) {
+            const ax = m.path[i].x * TILE_PX + TILE_PX / 2;
+            const ay = m.path[i].y * TILE_PX + TILE_PX / 2;
+            const bx = m.path[i + 1].x * TILE_PX + TILE_PX / 2;
+            const by = m.path[i + 1].y * TILE_PX + TILE_PX / 2;
+            const segDist = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
+            if (segDist < 0.1) continue;
+            const nx = (bx - ax) / segDist;
+            const ny = (by - ay) / segDist;
+            const px = -ny;
+            const py = nx;
+            let nextRung = rungSpacing * rungIndex;
+            while (nextRung < totalDist + segDist) {
+              if (nextRung > maxDist) break;
+              const localD = nextRung - totalDist;
+              const cx = ax + nx * localD;
+              const cy = ay + ny * localD;
+              for (const side of [-1, 1]) {
+                const ox = px * trackOffset * side;
+                const oy = py * trackOffset * side;
+                trailGfx
+                  .moveTo(
+                    cx + ox - px * rungHalfWidth,
+                    cy + oy - py * rungHalfWidth,
+                  )
+                  .lineTo(
+                    cx + ox + px * rungHalfWidth,
+                    cy + oy + py * rungHalfWidth,
+                  )
+                  .stroke({ color, alpha: 0.45 * alphaMul, width: 2 });
+              }
+              rungIndex++;
+              nextRung = rungSpacing * rungIndex;
+            }
+            totalDist += segDist;
+            if (totalDist >= maxDist) break;
+          }
+        } else {
+          const stepSpacing = 8;
+          const footOffset = 2.0;
+          const footLen = 2.5;
+          let totalDist = 0;
+          let stepIndex = 0;
+          for (let i = 0; i < m.path.length - 1; i++) {
+            const ax = m.path[i].x * TILE_PX + TILE_PX / 2;
+            const ay = m.path[i].y * TILE_PX + TILE_PX / 2;
+            const bx = m.path[i + 1].x * TILE_PX + TILE_PX / 2;
+            const by = m.path[i + 1].y * TILE_PX + TILE_PX / 2;
+            const segDist = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
+            if (segDist < 0.1) continue;
+            const nx = (bx - ax) / segDist;
+            const ny = (by - ay) / segDist;
+            const px = -ny;
+            const py = nx;
+            let nextStep = stepSpacing * stepIndex;
+            while (nextStep < totalDist + segDist) {
+              if (nextStep > maxDist) break;
+              const localD = nextStep - totalDist;
+              const side = stepIndex % 2 === 0 ? 1 : -1;
+              const cx = ax + nx * localD + px * footOffset * side;
+              const cy = ay + ny * localD + py * footOffset * side;
+              const halfLen = footLen / 2;
+              trailGfx
+                .moveTo(cx - nx * halfLen, cy - ny * halfLen)
+                .lineTo(cx + nx * halfLen, cy + ny * halfLen)
+                .stroke({ color, alpha: 0.5 * alphaMul, width: 2 });
+              stepIndex++;
+              nextStep = stepSpacing * stepIndex;
+            }
+            totalDist += segDist;
+            if (totalDist >= maxDist) break;
+          }
+        }
+      }
+    }
 
     function drawTrails() {
       trailGfx.clear();
       const { moveQueue: queue, units } = useGameStore.getState();
-      if (queue.length === 0) return;
-      for (const m of queue) {
-        const unit = units.find((u) => u.id === m.unitId);
-        const color = TEAM_COLORS[unit?.team ?? "blue"] ?? 0xffffff;
 
-        // Dashed line following the path
-        if (m.path.length < 2) continue;
-        const dashLen = 4;
-        const gapLen = 3;
-        let carry = 0; // tracks dash/gap state across segments
-        for (let i = 0; i < m.path.length - 1; i++) {
-          const ax = m.path[i].x * TILE_PX + TILE_PX / 2;
-          const ay = m.path[i].y * TILE_PX + TILE_PX / 2;
-          const bx = m.path[i + 1].x * TILE_PX + TILE_PX / 2;
-          const by = m.path[i + 1].y * TILE_PX + TILE_PX / 2;
-          const segDist = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2);
-          if (segDist < 0.1) continue;
-          const nx = (bx - ax) / segDist;
-          const ny = (by - ay) / segDist;
-          let d = 0;
-          while (d < segDist) {
-            const remaining = dashLen - carry;
-            const end = Math.min(d + remaining, segDist);
-            trailGfx
-              .moveTo(ax + nx * d, ay + ny * d)
-              .lineTo(ax + nx * end, ay + ny * end)
-              .stroke({ color, alpha: 0.45, width: 1.5 });
-            carry += end - d;
-            d = end;
-            if (carry >= dashLen) {
-              // skip gap
-              const gapEnd = Math.min(d + gapLen, segDist);
-              d = gapEnd;
-              carry = 0;
-            }
-          }
+      // Draw fading trails from previous queue
+      if (fadingTrails) {
+        const elapsed = Date.now() - fadingTrails.startTime;
+        if (elapsed >= TRAIL_DELAY_MS + TRAIL_FADE_MS) {
+          fadingTrails = null;
+        } else if (elapsed < TRAIL_DELAY_MS) {
+          drawTrailsForQueue(fadingTrails.queue, fadingTrails.units, 1);
+        } else {
+          const fadeMul = 1 - (elapsed - TRAIL_DELAY_MS) / TRAIL_FADE_MS;
+          drawTrailsForQueue(fadingTrails.queue, fadingTrails.units, fadeMul);
         }
       }
+
+      // Draw remote (subscription) movement trails
+      for (const [id, rt] of remoteTrails) {
+        const synthPath = [{ x: rt.originX, y: rt.originY }, ...rt.path];
+        const synth: QueuedMove[] = [
+          {
+            unitId: rt.unitId,
+            unitOnchainId: 0,
+            call: { contractAddress: "", entrypoint: "", calldata: [] },
+            originX: rt.originX,
+            originY: rt.originY,
+            destX: rt.path[rt.path.length - 1].x,
+            destY: rt.path[rt.path.length - 1].y,
+            path: synthPath,
+          },
+        ];
+        if (rt.fadeStart !== null) {
+          const elapsed = Date.now() - rt.fadeStart;
+          if (elapsed >= TRAIL_DELAY_MS + TRAIL_FADE_MS) {
+            remoteTrails.delete(id);
+            continue;
+          }
+          const alphaMul =
+            elapsed < TRAIL_DELAY_MS
+              ? 1
+              : 1 - (elapsed - TRAIL_DELAY_MS) / TRAIL_FADE_MS;
+          drawTrailsForQueue(synth, [rt.unit], alphaMul);
+        } else {
+          drawTrailsForQueue(synth, [rt.unit], 1);
+        }
+      }
+
+      if (queue.length === 0) return;
+      drawTrailsForQueue(queue, units, 1);
     }
 
     // --- Hover highlight + movement range ---
@@ -809,6 +960,11 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
             sprite.y = ms.unit.y * TILE_PX + TILE_PX / 2;
             setUnitAnim(ms.unit, sprite, "idle");
             activeMovements.delete(id);
+            // Start fade timer for remote trails
+            const rt = remoteTrails.get(id);
+            if (rt && rt.fadeStart === null) {
+              rt.fadeStart = Date.now();
+            }
             drawSelection();
             continue;
           }
@@ -842,6 +998,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       // Update selection highlight with pulse
       selectPulse += ticker.deltaTime * 0.15;
       drawSelection();
+      drawTrails();
     };
 
     app.ticker.add(tickerCb);
@@ -857,6 +1014,19 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     const storeUnsub = useGameStore.subscribe((state, prevState) => {
       // Sync pendingMoveTransactions and sprites from moveQueue
       if (state.moveQueue !== prevState.moveQueue) {
+        // If queue was cleared with fade requested (end-turn success), snapshot for fade-out
+        if (
+          state.moveQueue.length === 0 &&
+          prevState.moveQueue.length > 0 &&
+          state._trailFadeRequested
+        ) {
+          fadingTrails = {
+            queue: prevState.moveQueue,
+            units: prevState.units,
+            startTime: Date.now(),
+          };
+          useGameStore.setState({ _trailFadeRequested: false });
+        }
         const queuedIds = new Set(state.moveQueue.map((m) => m.unitId));
         // For dequeued units, cancel any active movement and snap sprite to store position
         for (const prev of prevState.moveQueue) {
@@ -899,8 +1069,12 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           // New unit from subscription
           const sprite = createUnitSprite(unit);
           unitSprites.set(unit.id, sprite);
-        } else if (!activeMovements.has(unit.id)) {
-          // Check if position changed compared to previous state
+        } else if (
+          !activeMovements.has(unit.id) &&
+          !state.moveQueue.some((m) => m.unitId === unit.id) &&
+          !prevState.moveQueue.some((m) => m.unitId === unit.id)
+        ) {
+          // Check if position changed compared to previous state (remote moves only)
           const prevUnit = prevState.units.find((u) => u.id === unit.id);
           const moved =
             prevUnit && (prevUnit.x !== unit.x || prevUnit.y !== unit.y);
@@ -920,6 +1094,15 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
               // Create a temporary unit at the old position for the movement system
               const animUnit: Unit = { ...prevUnit };
               startMovement(animUnit, path);
+              // Track trail for remote movement
+              remoteTrails.set(unit.id, {
+                unitId: unit.id,
+                originX: prevUnit.x,
+                originY: prevUnit.y,
+                path,
+                unit: animUnit,
+                fadeStart: null,
+              });
             } else {
               // No path found — teleport as fallback
               existing.x = unit.x * TILE_PX + TILE_PX / 2;

@@ -106,7 +106,8 @@ interface GameStore {
   moveQueue: QueuedMove[];
   queueMove: (entry: QueuedMove) => void;
   dequeueMove: (unitId: number) => void;
-  clearQueue: () => void;
+  clearQueue: (opts?: { fade?: boolean }) => void;
+  _trailFadeRequested: boolean;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -167,5 +168,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => ({
       moveQueue: state.moveQueue.filter((m) => m.unitId !== unitId),
     })),
-  clearQueue: () => set({ moveQueue: [] }),
+  _trailFadeRequested: false,
+  clearQueue: (opts) =>
+    set({ moveQueue: [], _trailFadeRequested: !!opts?.fade }),
 }));
