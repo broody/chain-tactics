@@ -43,7 +43,10 @@ if [ ! -f "$MAP_FILE" ]; then
 fi
 
 # Read non-empty lines into array
-mapfile -t ROWS < <(sed '/^[[:space:]]*$/d' "$MAP_FILE")
+ROWS=()
+while IFS= read -r line; do
+  ROWS+=("$line")
+done < <(sed '/^[[:space:]]*$/d' "$MAP_FILE")
 
 HEIGHT=${#ROWS[@]}
 if [ "$HEIGHT" -eq 0 ]; then
@@ -100,11 +103,13 @@ B2=$(( 2 * 16777216 + 3 * 65536 + LAST_X * 256 + LAST_Y ))      # P2 HQ @ (W-1, 
 BUILDING_COUNT=2
 BUILDINGS="$B1 $B2"
 
-# Units: 1 infantry per player next to their HQ
+# Units: 1 infantry per player near the center for testing
 # packed u32 = (player_id << 24) | (unit_type << 16) | (x << 8) | y
 # UnitType::Infantry = 1
-U1=$(( 1 * 16777216 + 1 * 65536 + 1 * 256 + 0 ))                       # P1 Infantry @ (1, 0)
-U2=$(( 2 * 16777216 + 1 * 65536 + (LAST_X - 1) * 256 + LAST_Y ))       # P2 Infantry @ (W-2, H-1)
+MID_X=$(( WIDTH / 2 ))
+MID_Y=$(( HEIGHT / 2 ))
+U1=$(( 1 * 16777216 + 1 * 65536 + (MID_X - 1) * 256 + MID_Y ))         # P1 Infantry @ (mid-1, mid)
+U2=$(( 2 * 16777216 + 1 * 65536 + (MID_X + 1) * 256 + MID_Y ))         # P2 Infantry @ (mid+1, mid)
 UNIT_COUNT=2
 UNITS="$U1 $U2"
 
