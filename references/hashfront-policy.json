@@ -1,0 +1,18 @@
+{
+  "contracts": {
+    "0x4f2da423297032281e082ce530a876c3754f50bea0cf310a05aca847bfb609e": {
+      "name": "Hashfront Actions",
+      "methods": [
+        { "name": "Create Game", "entrypoint": "create_game", "description": "Create a new game and join a player slot" },
+        { "name": "Join Game", "entrypoint": "join_game", "description": "Join an existing game in an open player slot" },
+        { "name": "Move Unit", "entrypoint": "move_unit", "description": "Move a unit along a path" },
+        { "name": "Attack", "entrypoint": "attack", "description": "Attack an enemy unit in range" },
+        { "name": "Capture", "entrypoint": "capture", "description": "Capture a building with infantry/ranger" },
+        { "name": "Wait", "entrypoint": "wait_unit", "description": "End a unit's turn without acting" },
+        { "name": "Build Unit", "entrypoint": "build_unit", "description": "Queue unit production at an owned factory" },
+        { "name": "End Turn", "entrypoint": "end_turn", "description": "Pass control to the next player" },
+        { "name": "Resign", "entrypoint": "resign", "description": "Forfeit the game" }
+      ]
+    }
+  }
+}
