@@ -47,6 +47,7 @@ interface LobbyGamesQueryResult {
 
 interface MapInfoNode {
   map_id: string | number;
+  name: string;
   player_count: string | number;
   height: string | number;
   width: string | number;
@@ -595,6 +596,7 @@ export default function Lobby() {
               edges {
                 node {
                   map_id
+                  name
                   player_count
                   height
                   width
@@ -1097,7 +1099,7 @@ export default function Lobby() {
                 </label>
 
                 <label className="text-xs uppercase tracking-widest flex flex-col gap-2">
-                  MAP ID
+                  MAP
                   <select
                     value={selectedMapId ?? ""}
                     onChange={(e) =>
@@ -1120,7 +1122,7 @@ export default function Lobby() {
                       const mapId = toNumber(mapInfo.map_id);
                       return (
                         <option key={mapId} value={mapId}>
-                          MAP {mapId}
+                          {mapInfo.name?.toUpperCase().replace(/ /g, "_") || `MAP ${mapId}`}
                         </option>
                       );
                     })}
