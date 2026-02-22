@@ -432,7 +432,8 @@ def create_game(width=14, height=14, rng_seed=42):
 def collect_income(state, player):
     """Collect 1 gold per owned city + 1 base HQ income at start of turn."""
     cities = state.player_cities(player)
-    income = len(cities) + 1  # +1 base HQ income
+    hq_income = getattr(sys.modules[__name__], '_HQ_INCOME', 1)
+    income = len(cities) + hq_income
     state.gold[player] += income
     state.gold_earned[player] += income
 
@@ -485,7 +486,7 @@ def do_attack(state, rng, attacker, defender):
 
 def do_capture(state, unit):
     """Attempt to capture building at unit's position."""
-    if unit.unit_type not in (UnitType.INFANTRY, UnitType.RANGER):
+    if unit.unit_type not in getattr(sys.modules[__name__], "_CAPTURE_TYPES", (UnitType.INFANTRY, UnitType.RANGER)):
         return False
     for b in state.buildings:
         if b.x == unit.x and b.y == unit.y and b.owner != unit.player:
@@ -604,7 +605,7 @@ def _uncaptured_cities(state, player):
 
 def _try_send_infantry_to_capture(state, unit, player, rng, targets_buildings):
     """Try to move infantry/ranger toward a capturable building. Returns True if handled."""
-    if unit.unit_type not in (UnitType.INFANTRY, UnitType.RANGER):
+    if unit.unit_type not in getattr(sys.modules[__name__], "_CAPTURE_TYPES", (UnitType.INFANTRY, UnitType.RANGER)):
         return False
     if not targets_buildings:
         return False
@@ -953,15 +954,13 @@ class DefensiveStrategy(Strategy):
             if fac.production_queue is not None:
                 continue
             gold = state.gold[player]
-            # Need infantry for city captures early
-            if owned_cities < 2 and gold >= 1 and own_counts[UnitType.INFANTRY] < 3:
-                build_unit(state, player, fac, UnitType.INFANTRY)
-            # Build tank as wall if enemy is pushing hard (lots of melee units nearby)
+            # Rangers are the core defensive unit — they capture AND provide zone control
+            if gold >= 2:
+                build_unit(state, player, fac, UnitType.RANGER)
+            # Build tank as wall if enemy has heavy melee pressure
             elif enemy_counts[UnitType.INFANTRY] + enemy_counts[UnitType.TANK] >= 4 and gold >= 3:
                 build_unit(state, player, fac, UnitType.TANK)
-            # Rangers for zone control (primary defensive unit)
-            elif gold >= 2:
-                build_unit(state, player, fac, UnitType.RANGER)
+            # Infantry only as cheap filler when gold is low
             elif gold >= 1:
                 build_unit(state, player, fac, UnitType.INFANTRY)
 
@@ -1042,21 +1041,17 @@ class DefensiveStrategy(Strategy):
                 do_wait(unit)
                 continue
 
-            # Early game: capture nearby cities
+            # Capture cities — defensive should still contest nearby cities aggressively
             if unit.unit_type in (UnitType.INFANTRY, UnitType.RANGER) and capturable:
                 if own_hq:
                     nearby_cities = [b for b in capturable if manhattan(b.x, b.y, own_hq.x, own_hq.y) <= 7]
                 else:
                     nearby_cities = capturable
                 if nearby_cities:
-                    # Don't send into danger
-                    safe_cities = [b for b in nearby_cities
-                                   if not any(e for e in enemies if manhattan(e.x, e.y, b.x, b.y) <= 2)]
-                    if safe_cities:
-                        if _try_send_infantry_to_capture(state, unit, player, rng, safe_cities):
-                            if state.winner:
-                                return
-                            continue
+                    if _try_send_infantry_to_capture(state, unit, player, rng, nearby_cities):
+                        if state.winner:
+                            return
+                        continue
 
             # Threats near HQ - intercept
             threats = [e for e in enemies if own_hq and manhattan(e.x, e.y, own_hq.x, own_hq.y) <= 5]
