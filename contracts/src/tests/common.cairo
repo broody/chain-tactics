@@ -11,6 +11,7 @@ use hashfront::models::player::{m_PlayerHQ, m_PlayerState};
 use hashfront::models::unit::{m_Unit, m_UnitPosition};
 use hashfront::systems::actions::{IActionsDispatcher, actions};
 use starknet::ContractAddress;
+use starknet::testing::{set_block_hash, set_block_number};
 
 pub fn PLAYER1() -> ContractAddress {
     'PLAYER1'.try_into().unwrap()
@@ -62,6 +63,10 @@ fn contract_defs() -> Span<ContractDef> {
 
 /// Spawn a test world and return the actions dispatcher.
 pub fn setup() -> (IActionsDispatcher, WorldStorage) {
+    // Keep combat rolls deterministic in tests.
+    set_block_number(42);
+    set_block_hash(32, 777);
+
     let ndef = namespace_def();
     let mut world = spawn_test_world(world::TEST_CLASS_HASH, [ndef].span());
     world.sync_perms_and_inits(contract_defs());

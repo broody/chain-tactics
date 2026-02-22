@@ -65,4 +65,21 @@ pub impl UnitImpl of UnitTrait {
             && u.x == x
             && u.y == y
     }
+
+    /// Check if a specific player's capture-capable unit occupies (x, y).
+    fn capture_unit_exists_at(
+        ref world: dojo::world::WorldStorage, game_id: u32, x: u8, y: u8, player_id: u8,
+    ) -> bool {
+        let pos: UnitPosition = world.read_model((game_id, x, y));
+        if pos.unit_id == 0 {
+            return false;
+        }
+
+        let u: Unit = world.read_model((game_id, pos.unit_id));
+        u.is_alive
+            && u.player_id == player_id
+            && (u.unit_type == UnitType::Infantry || u.unit_type == UnitType::Ranger)
+            && u.x == x
+            && u.y == y
+    }
 }

@@ -115,9 +115,9 @@ fn test_join_game_runs_p1_income() {
     set_account_contract_address(p2);
     actions_dispatcher.join_game(game_id, 2);
 
-    // P1 should have starting gold (no cities on test map, so income = 0)
+    // P1 should receive base income when game starts.
     let ps1: PlayerState = world.read_model((game_id, 1_u8));
-    assert(ps1.gold == STARTING_GOLD, 'p1 gold unchanged');
+    assert(ps1.gold == STARTING_GOLD + 1, 'p1 should get base income');
 }
 
 #[test]

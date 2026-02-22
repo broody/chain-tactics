@@ -192,7 +192,14 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({
 
   return (
     <ToastContext.Provider
-      value={{ toast, toasts, onHoverStart, onHoverEnd, showErrorModal, dismissErrorModal }}
+      value={{
+        toast,
+        toasts,
+        onHoverStart,
+        onHoverEnd,
+        showErrorModal,
+        dismissErrorModal,
+      }}
     >
       {children}
       {errorModal && (

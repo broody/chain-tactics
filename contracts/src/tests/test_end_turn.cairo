@@ -161,7 +161,7 @@ fn test_end_turn_runs_income() {
     actions_dispatcher.end_turn(game_id);
 
     let ps2: PlayerState = world.read_model((game_id, 2_u8));
-    assert(ps2.gold == gold_before + 1, 'P2 should gain 1 gold');
+    assert(ps2.gold == gold_before + 2, 'p2 income mismatch');
 }
 
 #[test]

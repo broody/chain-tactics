@@ -42,7 +42,8 @@ pub mod actions {
     use hashfront::models::player::{PlayerHQ, PlayerState};
     use hashfront::models::unit::{Unit, UnitImpl, UnitPosition};
     use hashfront::types::{BuildingType, GameState, TileType, UnitType, Vec2};
-    use starknet::get_caller_address;
+    use starknet::syscalls::get_block_hash_syscall;
+    use starknet::{get_block_number, get_caller_address};
     use super::IActions;
 
     #[abi(embed_v0)]
@@ -329,6 +330,7 @@ pub mod actions {
             assert(unit.is_alive, 'Unit is dead');
             assert(unit.player_id == game.current_player, 'Not your unit');
             assert(unit.last_moved_round < game.round, 'Already moved');
+            assert(unit.last_acted_round < game.round, 'Already acted');
 
             let path_span = path.span();
             assert(path_span.len() > 0, 'Empty path');
@@ -341,6 +343,17 @@ pub mod actions {
 
             let max_move: u8 = unit_stats::move_range(unit.unit_type);
             let mut total_cost: u8 = 0;
+            let mut road_bonus_remaining: u8 = if unit_stats::gets_road_bonus(unit.unit_type) {
+                let start_tile: MapTile = world.read_model((game.map_id, unit.x, unit.y));
+                if start_tile.tile_type == TileType::Road
+                    || start_tile.tile_type == TileType::DirtRoad {
+                    2
+                } else {
+                    0
+                }
+            } else {
+                0
+            };
             let mut prev_x = unit.x;
             let mut prev_y = unit.y;
             let mut i: u32 = 0;
@@ -357,7 +370,23 @@ pub mod actions {
                     unit_stats::can_traverse(unit.unit_type, map_tile.tile_type), 'Cannot traverse',
                 );
 
-                total_cost += unit_stats::move_cost(map_tile.tile_type);
+                let mut step_cost = unit_stats::move_cost(map_tile.tile_type);
+                if road_bonus_remaining > 0 {
+                    if map_tile.tile_type == TileType::Road
+                        || map_tile.tile_type == TileType::DirtRoad {
+                        let road_spend = if step_cost > road_bonus_remaining {
+                            road_bonus_remaining
+                        } else {
+                            step_cost
+                        };
+                        step_cost -= road_spend;
+                        road_bonus_remaining -= road_spend;
+                    } else {
+                        road_bonus_remaining = 0;
+                    }
+                }
+
+                total_cost += step_cost;
                 assert(total_cost <= max_move, 'Exceeds movement range');
 
                 if i + 1 < path_span.len() {
@@ -385,8 +414,8 @@ pub mod actions {
             unit.last_moved_round = game.round;
             world.write_model(@unit);
 
-            // Optimization: Reset capture if unit moves away
-            if unit.unit_type == UnitType::Infantry {
+            // Optimization: Reset capture if a capture-capable unit moves away.
+            if unit_stats::can_capture(unit.unit_type) {
                 let mut old_building: Building = world.read_model((game_id, old_x, old_y));
                 if old_building.capture_player == game.current_player
                     && old_building.capture_progress > 0 {
@@ -430,14 +459,28 @@ pub mod actions {
             let max_range = unit_stats::max_attack_range(attacker.unit_type);
             assert(distance >= min_range && distance <= max_range, 'Out of attack range');
 
-            let map_tile: MapTile = world.read_model((game.map_id, defender.x, defender.y));
-            let (dmg_to_def, dmg_to_atk) = combat::resolve_combat(
+            let attacker_moved_this_turn = attacker.last_moved_round == game.round;
+            if attacker.unit_type == UnitType::Ranger {
+                assert(!attacker_moved_this_turn, 'Ranger moved');
+            }
+
+            let attack_roll = self
+                .combat_roll(game_id, unit_id, target_id, game.round, distance, 17);
+            let counter_roll = self
+                .combat_roll(game_id, unit_id, target_id, game.round, distance, 53);
+
+            let attacker_tile: MapTile = world.read_model((game.map_id, attacker.x, attacker.y));
+            let defender_tile: MapTile = world.read_model((game.map_id, defender.x, defender.y));
+            let (dmg_to_def, dmg_to_atk, attack_outcome, counter_outcome) = combat::resolve_combat(
                 attacker.unit_type,
-                attacker.hp,
                 defender.unit_type,
                 defender.hp,
-                map_tile.tile_type,
+                attacker_tile.tile_type,
+                defender_tile.tile_type,
                 distance,
+                attacker_moved_this_turn,
+                attack_roll,
+                counter_roll,
             );
 
             if dmg_to_def >= defender.hp {
@@ -475,6 +518,10 @@ pub mod actions {
                         .read_model((game_id, game.current_player));
                     atk_player.unit_count -= 1;
                     world.write_model(@atk_player);
+
+                    game_helpers::check_elimination(
+                        ref world, game_id, attacker.player_id, ref game,
+                    );
                 } else {
                     attacker.hp -= dmg_to_atk;
                     attacker.last_acted_round = game.round;
@@ -493,12 +540,14 @@ pub mod actions {
                         target_id,
                         damage_to_defender: dmg_to_def,
                         damage_to_attacker: dmg_to_atk,
+                        attack_outcome,
+                        counter_outcome,
                     },
                 );
             world.write_model(@game);
         }
 
-        /// Capture a building with an infantry unit. Increments capture progress; when it
+        /// Capture a building with an infantry or ranger unit. Increments capture progress; when it
         /// reaches the threshold, transfers ownership. Capturing an HQ ends the game.
         fn capture(ref self: ContractState, game_id: u32, unit_id: u8) {
             let mut world = self.world_default();
@@ -513,7 +562,7 @@ pub mod actions {
             let mut unit: Unit = world.read_model((game_id, unit_id));
             assert(unit.is_alive, 'Unit is dead');
             assert(unit.player_id == game.current_player, 'Not your unit');
-            assert(unit.unit_type == UnitType::Infantry, 'Only infantry captures');
+            assert(unit_stats::can_capture(unit.unit_type), 'Only infantry/ranger captures');
             assert(unit.last_acted_round < game.round, 'Already acted');
 
             let mut building: Building = world.read_model((game_id, unit.x, unit.y));
@@ -763,6 +812,44 @@ pub mod actions {
     impl InternalImpl of InternalTrait {
         fn world_default(self: @ContractState) -> dojo::world::WorldStorage {
             self.world(@"hashfront")
+        }
+
+        fn combat_roll(
+            self: @ContractState,
+            game_id: u32,
+            attacker_id: u8,
+            target_id: u8,
+            round: u8,
+            distance: u8,
+            salt: u8,
+        ) -> u8 {
+            let block_number = get_block_number();
+            let entropy_block = if block_number > 10_u64 {
+                block_number - 10_u64
+            } else {
+                0_u64
+            };
+
+            let block_hash = match get_block_hash_syscall(entropy_block) {
+                Ok(hash) => hash,
+                Err(_) => entropy_block.into(),
+            };
+
+            let entropy: u256 = block_hash.try_into().unwrap();
+            let seed_modulus: u256 = 1000003;
+            let roll_modulus: u256 = 100;
+            let one: u256 = 1;
+
+            let mut mixed = entropy % seed_modulus;
+            mixed = mixed + game_id.into();
+            mixed = mixed + attacker_id.into();
+            mixed = mixed + target_id.into();
+            mixed = mixed + round.into();
+            mixed = mixed + distance.into();
+            mixed = mixed + salt.into();
+
+            let roll_u256 = (mixed % roll_modulus) + one;
+            roll_u256.try_into().unwrap()
         }
     }
 }

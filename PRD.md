@@ -38,7 +38,7 @@ On your turn, for each unit:
 3. The unit is marked as acted
 
 System actions **end_turn**:
-- Resets stale capture progress (infantry that moved off a building)
+- Resets stale capture progress (infantry/ranger that moved off a building)
 - Advances to the next alive player
 - Increments round when wrapping back to Player 1
 - Runs income and production for the next player
@@ -61,9 +61,9 @@ Player 1 always goes first. The first player to create the game picks their slot
 | **City** | `C` | 1 | +1 | Building: capturable, generates income |
 | **Factory** | `F` | 1 | +1 | Building: capturable, produces units |
 | **HQ** | `H` | 1 | +2 | Building: lose if captured |
-| **Road** | `R` | 1 | 0 | Vehicle units get +1 move when starting here |
+| **Road** | `R` | 1 | 0 | Tank and Ranger get +2 temporary move when starting here |
 | **Tree** | `T` | 1 | +1 | |
-| **DirtRoad** | `D` | 1 | 0 | Vehicle units get +1 move when starting here |
+| **DirtRoad** | `D` | 1 | 0 | Tank and Ranger get +2 temporary move when starting here |
 
 ### Buildings
 
@@ -83,7 +83,7 @@ Three unit types with asymmetric combat roles (designed to expand with additiona
 |------|-----|--------|------|-------|------|---------|
 | **Infantry** | 3 | 2 | 4 | 1 | 1 | Captures buildings, traverses mountains |
 | **Tank** | 5 | 4 | 2 | 1 | 3 | Raw combat power |
-| **Ranger** | 4 | 3 | 3 | 2–3 | 2 | Cannot attack adjacent (min range 2), cannot attack after moving |
+| **Ranger** | 3 | 3 | 3 | 2–3 | 2 | Cannot attack adjacent (min range 2), cannot attack after moving |
 
 ### Combat Resolution
 
@@ -132,7 +132,8 @@ Combat includes bounded hit chance to reduce deterministic outcomes while preser
 
 #### Randomness Source
 
-- PvP must use verifiable randomness (VRF or commit-reveal), not client-side RNG
+- For now, combat rolls use block hash-derived entropy on-chain
+- For production PvP fairness, this should be upgraded to verifiable randomness (VRF or commit-reveal)
 - In local/dev test mode, deterministic seeded RNG is acceptable for repeatable tests
 
 ### Movement
@@ -142,9 +143,9 @@ Combat includes bounded hit chance to reduce deterministic outcomes while preser
 - Total movement cost must not exceed the unit's move range
 - Path tiles (except destination) must be unoccupied
 - Mountains cost 2 movement and are infantry-only
-- Vehicle road bonus: vehicle units (currently **Tank**) gain +2 temporary movement when they **start their move** on **Road** or **DirtRoad**. A vehicle that starts on non-road terrain does not gain the bonus, even if it enters road tiles mid-move.
-- This +2 can only be spent on contiguous Road/DirtRoad tiles; once a vehicle leaves road terrain, any unused road bonus is lost
-- Infantry and Ranger do not receive road bonus movement
+- Road bonus: **Tank** and **Ranger** gain +2 temporary movement when they **start their move** on **Road** or **DirtRoad**. A unit that starts on non-road terrain does not gain the bonus, even if it enters road tiles mid-move.
+- This +2 can only be spent on contiguous Road/DirtRoad tiles; once the unit leaves road terrain, any unused road bonus is lost
+- Infantry does not receive road bonus movement
 
 ### Unit Flags
 
@@ -160,10 +161,11 @@ Flags reset at the start of the owning player's next turn.
 | Constant | Value |
 |----------|-------|
 | Starting gold | 5 |
+| Base income per turn | 1 gold/turn |
 | Income per city | 1 gold/turn |
 | Capture threshold | 2 turns |
 
-- **Income** runs at the start of each player's turn: `cities_owned × 1 gold`
+- **Income** runs at the start of each player's turn: `1 + (cities_owned × 1 gold)`
 - **Production** runs at the start of each player's turn: queued units spawn at their factory if the tile is unoccupied
 - Produced units spawn with `has_moved = true, has_acted = true` (cannot act on the turn they spawn)
 - Units are queued at Factories via `build_unit` — gold is deducted immediately
@@ -175,23 +177,23 @@ Flags reset at the start of the owning player's next turn.
 | **Create Game** | `create_game(map_id, player_id, is_test_mode)` | Create game and join slot |
 | **Move** | `move_unit(game_id, unit_id, path)` | Move unit along validated path |
 | **Attack** | `attack(game_id, unit_id, target_id)` | Attack enemy unit in range |
-| **Capture** | `capture(game_id, unit_id)` | Infantry captures building at current position |
+| **Capture** | `capture(game_id, unit_id)` | Infantry/Ranger captures building at current position |
 | **Wait** | `wait_unit(game_id, unit_id)` | End unit's turn without acting |
 | **Build** | `build_unit(game_id, factory_x, factory_y, unit_type)` | Queue production at owned factory |
 | **End Turn** | `end_turn(game_id)` | Pass control to next player |
 
 ### Capture Mechanics
 
-- Only **Infantry** can capture
+- Only **Infantry** and **Ranger** can capture
 - Standing on an enemy/neutral building increments capture progress
 - If a different player starts capturing, progress resets to 1 for the new player
 - At threshold (2), ownership transfers — old owner loses building counts, new owner gains them
 - Capturing an **HQ** immediately ends the game (capturer wins)
-- If infantry moves off a building before capture completes, progress resets on the owner's next turn
+- If infantry/ranger moves off a building before capture completes, progress resets on the owner's next turn
 
 ## Win Conditions
 
-1. **HQ Captured** — An infantry completes capture of an enemy HQ. Capturer wins instantly.
+1. **HQ Captured** — An infantry or ranger completes capture of an enemy HQ. Capturer wins instantly.
 2. **Elimination** — A player loses their HQ, or has 0 units + 0 factories + 0 gold. They are eliminated. Last player standing wins.
 3. **Timeout** — After 30 rounds, the alive player with the highest score (total unit HP + gold) wins.
 

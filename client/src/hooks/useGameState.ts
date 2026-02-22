@@ -96,6 +96,7 @@ function processEntityUpdates(entities: StandardizedQueryResult<Schema>) {
           type: UNIT_TYPES[String(u.unit_type)] || existing.type,
           team: TEAMS[playerId] || existing.team,
           lastMovedRound: toNumber(u.last_moved_round),
+          lastActedRound: toNumber(u.last_acted_round),
         });
       } else if (isAlive && unitId > 0) {
         const teamId = TEAMS[playerId] || "blue";
@@ -108,6 +109,7 @@ function processEntityUpdates(entities: StandardizedQueryResult<Schema>) {
           unitId,
           toNumber(u.hp),
           toNumber(u.last_moved_round),
+          toNumber(u.last_acted_round),
         );
       }
     }

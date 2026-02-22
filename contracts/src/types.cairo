@@ -39,6 +39,15 @@ pub enum BuildingType {
     HQ,
 }
 
+#[derive(Serde, Drop, Copy, PartialEq, Introspect, DojoStore, Default)]
+pub enum CombatOutcome {
+    #[default]
+    None,
+    Hit,
+    Graze,
+    Whiff,
+}
+
 #[derive(Serde, Drop, Copy, Introspect)]
 pub struct Vec2 {
     pub x: u8,

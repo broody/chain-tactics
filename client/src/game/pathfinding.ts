@@ -1,5 +1,7 @@
 import { GRID_SIZE, TileType } from "./types";
 
+type UnitMoveType = "rifle" | "tank" | "artillery";
+
 /** Movement cost per tile type. -1 = impassable. */
 const TILE_COST: Record<TileType, number> = {
   [TileType.Grass]: 1,
@@ -18,6 +20,7 @@ interface Node {
   y: number;
   g: number; // cost from start
   f: number; // g + heuristic
+  roadBonusRemaining: number;
   parent: Node | null;
 }
 
@@ -32,6 +35,66 @@ const DIRS = [
   [0, -1],
 ];
 
+function normalizeUnitType(unitType: string): UnitMoveType {
+  if (unitType === "tank" || unitType === "artillery") return unitType;
+  return "rifle";
+}
+
+function isRoadTile(tileType: TileType): boolean {
+  return tileType === TileType.Road || tileType === TileType.DirtRoad;
+}
+
+function canTraverseTile(unitType: UnitMoveType, tileType: TileType): boolean {
+  if (tileType === TileType.Mountain) return unitType === "rifle";
+  return true;
+}
+
+function initialRoadBonus(
+  tileMap: Uint8Array,
+  fromX: number,
+  fromY: number,
+  unitType: UnitMoveType,
+): number {
+  if (unitType !== "tank" && unitType !== "artillery") return 0;
+  const startTile = tileMap[fromY * GRID_SIZE + fromX] as TileType;
+  return isRoadTile(startTile) ? 2 : 0;
+}
+
+function resolveStepCost(
+  tileType: TileType,
+  unitType: UnitMoveType,
+  roadBonusRemaining: number,
+): { stepCost: number; nextRoadBonus: number } {
+  const baseCost = TILE_COST[tileType];
+  if (unitType !== "tank" && unitType !== "artillery") {
+    return { stepCost: baseCost, nextRoadBonus: 0 };
+  }
+
+  let stepCost = baseCost;
+  let nextRoadBonus = roadBonusRemaining;
+
+  if (nextRoadBonus > 0) {
+    if (isRoadTile(tileType)) {
+      const spend = Math.min(stepCost, nextRoadBonus);
+      stepCost -= spend;
+      nextRoadBonus -= spend;
+    } else {
+      // Road bonus can only be spent on a contiguous road segment.
+      nextRoadBonus = 0;
+    }
+  }
+
+  return { stepCost, nextRoadBonus };
+}
+
+function stateKey(x: number, y: number, roadBonusRemaining: number): number {
+  return (y * GRID_SIZE + x) * 3 + roadBonusRemaining;
+}
+
+function coordKey(x: number, y: number): number {
+  return y * GRID_SIZE + x;
+}
+
 /**
  * A* pathfinding on the tile map.
  * Returns array of {x,y} positions from start (exclusive) to goal (inclusive).
@@ -44,31 +107,36 @@ export function findPath(
   toX: number,
   toY: number,
   maxSteps: number,
+  unitType: string,
   blocked?: Set<number>,
 ): { x: number; y: number }[] {
   if (fromX === toX && fromY === toY) return [];
+  const moveType = normalizeUnitType(unitType);
 
   // Check destination is in bounds and passable
   if (toX < 0 || toX >= GRID_SIZE || toY < 0 || toY >= GRID_SIZE) return [];
-  const destCost = TILE_COST[tileMap[toY * GRID_SIZE + toX] as TileType];
+  const destTile = tileMap[toY * GRID_SIZE + toX] as TileType;
+  if (!canTraverseTile(moveType, destTile)) return [];
+  const destCost = TILE_COST[destTile];
   if (destCost < 0) return [];
-  if (blocked?.has(toY * GRID_SIZE + toX)) return [];
+  if (blocked?.has(coordKey(toX, toY))) return [];
 
   const open: Node[] = [];
   const closed = new Set<number>();
-  const key = (x: number, y: number) => y * GRID_SIZE + x;
-
   const bestG = new Map<number, number>();
+  const startRoadBonus = initialRoadBonus(tileMap, fromX, fromY, moveType);
+  const startStateKey = stateKey(fromX, fromY, startRoadBonus);
 
   const start: Node = {
     x: fromX,
     y: fromY,
     g: 0,
     f: heuristic(fromX, fromY, toX, toY),
+    roadBonusRemaining: startRoadBonus,
     parent: null,
   };
   open.push(start);
-  bestG.set(key(fromX, fromY), 0);
+  bestG.set(startStateKey, 0);
 
   while (open.length > 0) {
     // Find node with lowest f
@@ -91,7 +159,7 @@ export function findPath(
       return path;
     }
 
-    const ck = key(current.x, current.y);
+    const ck = stateKey(current.x, current.y, current.roadBonusRemaining);
     if (closed.has(ck)) continue;
     closed.add(ck);
 
@@ -101,14 +169,21 @@ export function findPath(
 
       if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
 
-      const nk = key(nx, ny);
+      const tileType = tileMap[ny * GRID_SIZE + nx] as TileType;
+      if (!canTraverseTile(moveType, tileType)) continue;
+
+      const { stepCost, nextRoadBonus } = resolveStepCost(
+        tileType,
+        moveType,
+        current.roadBonusRemaining,
+      );
+      const nk = stateKey(nx, ny, nextRoadBonus);
       if (closed.has(nk)) continue;
 
-      const tileCost = TILE_COST[tileMap[ny * GRID_SIZE + nx] as TileType];
-      if (tileCost < 0) continue; // impassable
-      if (blocked?.has(nk)) continue; // occupied by unit
+      if (stepCost < 0) continue; // impassable
+      if (blocked?.has(coordKey(nx, ny))) continue; // occupied by unit
 
-      const ng = current.g + tileCost;
+      const ng = current.g + stepCost;
       if (ng > maxSteps) continue; // exceeds movement budget
 
       const prev = bestG.get(nk);
@@ -120,6 +195,7 @@ export function findPath(
         y: ny,
         g: ng,
         f: ng + heuristic(nx, ny, toX, toY),
+        roadBonusRemaining: nextRoadBonus,
         parent: current,
       });
     }
@@ -137,16 +213,22 @@ export function findReachable(
   fromX: number,
   fromY: number,
   maxSteps: number,
+  unitType: string,
   blocked?: Set<number>,
 ): { x: number; y: number }[] {
-  const key = (x: number, y: number) => y * GRID_SIZE + x;
+  const moveType = normalizeUnitType(unitType);
   const bestG = new Map<number, number>();
-  const queue: { x: number; y: number; g: number }[] = [
-    { x: fromX, y: fromY, g: 0 },
-  ];
-  bestG.set(key(fromX, fromY), 0);
+  const startRoadBonus = initialRoadBonus(tileMap, fromX, fromY, moveType);
+  const queue: {
+    x: number;
+    y: number;
+    g: number;
+    roadBonusRemaining: number;
+  }[] = [{ x: fromX, y: fromY, g: 0, roadBonusRemaining: startRoadBonus }];
+  bestG.set(stateKey(fromX, fromY, startRoadBonus), 0);
 
   const result: { x: number; y: number }[] = [];
+  const seenCoords = new Set<number>();
 
   while (queue.length > 0) {
     // Pick lowest cost node
@@ -163,21 +245,32 @@ export function findReachable(
 
       if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
 
-      const nk = key(nx, ny);
-      const tileCost = TILE_COST[tileMap[ny * GRID_SIZE + nx] as TileType];
-      if (tileCost < 0) continue;
-      if (blocked?.has(nk)) continue;
+      const tileType = tileMap[ny * GRID_SIZE + nx] as TileType;
+      if (!canTraverseTile(moveType, tileType)) continue;
 
-      const ng = current.g + tileCost;
+      const { stepCost, nextRoadBonus } = resolveStepCost(
+        tileType,
+        moveType,
+        current.roadBonusRemaining,
+      );
+      if (stepCost < 0) continue;
+      if (blocked?.has(coordKey(nx, ny))) continue;
+
+      const ng = current.g + stepCost;
       if (ng > maxSteps) continue;
 
+      const nk = stateKey(nx, ny, nextRoadBonus);
       const prev = bestG.get(nk);
       if (prev !== undefined && ng >= prev) continue;
 
-      const isNew = prev === undefined;
       bestG.set(nk, ng);
-      queue.push({ x: nx, y: ny, g: ng });
-      if (isNew) result.push({ x: nx, y: ny });
+      queue.push({ x: nx, y: ny, g: ng, roadBonusRemaining: nextRoadBonus });
+
+      const coord = coordKey(nx, ny);
+      if (!seenCoords.has(coord)) {
+        seenCoords.add(coord);
+        result.push({ x: nx, y: ny });
+      }
     }
   }
 

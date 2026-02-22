@@ -347,18 +347,11 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       yellow: yellowSheet,
     };
 
-    const TEAM_COLORS: Record<string, number> = {
-      blue: 0x4a9eff,
-      red: 0xff4a4a,
-      green: 0x4aff4a,
-      yellow: 0xffdd4a,
-    };
-
     // PRD unit types: Infantry (rifle), Tank (tank), Ranger (artillery)
     const UNIT_MOVE_RANGE: Record<string, number> = {
-      rifle: 3, // Infantry
+      rifle: 4, // Infantry
       tank: 2, // Tank
-      artillery: 2, // Ranger
+      artillery: 3, // Ranger
     };
 
     // Attack range: [min, max] Manhattan distance
@@ -705,6 +698,16 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       return false;
     }
 
+    function unitHasActed(unit: Unit): boolean {
+      const { game: g, moveQueue } = useGameStore.getState();
+      const queued = moveQueue.find((m) => m.unitId === unit.id);
+      if (queued?.calls.some((call) => call.entrypoint !== "move_unit")) {
+        return true;
+      }
+      if (g && unit.lastActedRound >= g.round) return true;
+      return false;
+    }
+
     function drawMoveRange() {
       rangeGfx.clear();
       attackableTargets = [];
@@ -717,6 +720,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         .moveQueue.find((m) => m.unitId === selectedUnit!.id);
       if (queued) {
         if (queued.calls.some((c) => c.entrypoint === "attack")) return;
+        if (selectedUnit.type === "artillery") return;
         const [minAtkRange, maxAtkRange] = UNIT_ATTACK_RANGE[
           selectedUnit.type
         ] ?? [1, 1];
@@ -733,6 +737,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         return;
       }
 
+      if (unitHasActed(selectedUnit)) return;
       if (unitHasMoved(selectedUnit)) return;
 
       const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
@@ -741,6 +746,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         selectedUnit.x,
         selectedUnit.y,
         range,
+        selectedUnit.type,
         getBlockedTiles(selectedUnit.id),
       );
 
@@ -785,10 +791,10 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const [minAtkRange, maxAtkRange] = UNIT_ATTACK_RANGE[
         selectedUnit.type
       ] ?? [1, 1];
-      const allPositions = [
-        { x: selectedUnit.x, y: selectedUnit.y },
-        ...reachable,
-      ];
+      const canAttackAfterMoving = selectedUnit.type !== "artillery";
+      const allPositions = canAttackAfterMoving
+        ? [{ x: selectedUnit.x, y: selectedUnit.y }, ...reachable]
+        : [{ x: selectedUnit.x, y: selectedUnit.y }];
       const enemies = useGameStore
         .getState()
         .units.filter((u) => u.team !== selectedUnit!.team);
@@ -1009,7 +1015,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     function tryMoveSelectedUnit(screenX: number, screenY: number) {
       if (!selectedUnit) return;
       if (useGameStore.getState().isEndingTurn) return;
-      const { game, units } = useGameStore.getState();
+      const { game } = useGameStore.getState();
       if (game?.state !== "Playing") return;
       const currentTeam =
         game?.currentPlayer !== undefined
@@ -1019,6 +1025,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         ? currentTeam
         : getMyTeam(addressRef.current);
       if (!allowedTeam || selectedUnit.team !== allowedTeam) return;
+      if (unitHasActed(selectedUnit)) return;
 
       const worldPos = vp.toWorld(screenX, screenY);
       const gridX = Math.floor(worldPos.x / TILE_PX);
@@ -1035,6 +1042,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         existingQueue &&
         !existingQueue.calls.some((c) => c.entrypoint === "attack")
       ) {
+        if (selectedUnit.type === "artillery") return;
         const targetEnemy = attackableTargets.find(
           (u) => u.x === gridX && u.y === gridY,
         );
@@ -1112,6 +1120,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
             setUnitAnim(selectedUnit, sprite, "attack");
           }
         } else {
+          if (selectedUnit.type === "artillery") return;
+
           // Need to move first — find closest reachable tile in attack range
           const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
           const reachable = findReachable(
@@ -1119,6 +1129,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
             selectedUnit.x,
             selectedUnit.y,
             range,
+            selectedUnit.type,
             getBlockedTiles(selectedUnit.id),
           );
 
@@ -1150,6 +1161,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
               candidate.x,
               candidate.y,
               range,
+              selectedUnit.type,
               getBlockedTiles(selectedUnit.id),
             );
             if (movePath.length > 0) break;
@@ -1180,6 +1192,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         gridX,
         gridY,
         range,
+        selectedUnit.type,
         getBlockedTiles(selectedUnit.id),
       );
       if (path.length === 0) return;
@@ -1200,7 +1213,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         return d >= minAtk && d <= maxAtk;
       });
 
-      if (hasTargets) {
+      if (hasTargets && selectedUnit.type !== "artillery") {
         // Keep selected — drawMoveRange will show attack targets from destination
         drawMoveRange();
       } else {
@@ -1535,6 +1548,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
               unit.x,
               unit.y,
               100, // generous range — move already confirmed on-chain
+              prevUnit.type,
               getBlockedTiles(unit.id),
             );
             if (path.length > 0) {

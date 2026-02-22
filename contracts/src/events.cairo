@@ -1,4 +1,4 @@
-use hashfront::types::UnitType;
+use hashfront::types::{CombatOutcome, UnitType};
 
 #[derive(Introspect, Serde, Drop)]
 #[dojo::event]
@@ -44,6 +44,8 @@ pub struct UnitAttacked {
     pub target_id: u8,
     pub damage_to_defender: u8,
     pub damage_to_attacker: u8,
+    pub attack_outcome: CombatOutcome,
+    pub counter_outcome: CombatOutcome,
 }
 
 #[derive(Introspect, Serde, Drop)]

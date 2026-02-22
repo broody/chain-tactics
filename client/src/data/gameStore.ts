@@ -17,11 +17,11 @@ export const UNIT_TYPES: Record<string, string> = {
 };
 
 // --- Units ---
-// Max HP per unit type (Infantry=3, Tank=5, Ranger=2)
+// Max HP per unit type (Infantry=3, Tank=5, Ranger=3)
 export const UNIT_MAX_HP: Record<string, number> = {
   rifle: 3,
   tank: 5,
-  artillery: 2,
+  artillery: 3,
 };
 
 export interface Unit {
@@ -33,6 +33,7 @@ export interface Unit {
   y: number;
   hp: number;
   lastMovedRound: number;
+  lastActedRound: number;
   facing: "left" | "right" | "up" | "down";
   animation:
     | "idle"
@@ -96,11 +97,15 @@ interface GameStore {
     onchainId: number,
     hp?: number,
     lastMovedRound?: number,
+    lastActedRound?: number,
   ) => Unit;
   updateUnit: (
     onchainId: number,
     updates: Partial<
-      Pick<Unit, "x" | "y" | "type" | "team" | "hp" | "lastMovedRound">
+      Pick<
+        Unit,
+        "x" | "y" | "type" | "team" | "hp" | "lastMovedRound" | "lastActedRound"
+      >
     >,
   ) => void;
   removeUnit: (onchainId: number) => void;
@@ -130,7 +135,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   units: [],
   nextId: 1,
-  addUnit: (type, team, x, y, onchainId, hp, lastMovedRound = 0) => {
+  addUnit: (
+    type,
+    team,
+    x,
+    y,
+    onchainId,
+    hp,
+    lastMovedRound = 0,
+    lastActedRound = 0,
+  ) => {
     const { nextId, units } = get();
     const unit: Unit = {
       id: nextId,
@@ -141,6 +155,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       y,
       hp: hp ?? UNIT_MAX_HP[type] ?? 3,
       lastMovedRound,
+      lastActedRound,
       facing: team === "red" ? "left" : "right",
       animation: "idle",
     };

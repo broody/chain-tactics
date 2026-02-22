@@ -1,6 +1,6 @@
 use dojo::event::EventStorage;
 use dojo::model::ModelStorage;
-use hashfront::consts::INCOME_PER_CITY;
+use hashfront::consts::{INCOME_BASE, INCOME_PER_CITY};
 use hashfront::events::GameOver;
 use hashfront::helpers::unit_stats;
 use hashfront::models::building::Building;
@@ -68,10 +68,7 @@ pub fn count_player_buildings(ref world: dojo::world::WorldStorage, game_id: u32
 
 pub fn run_income(ref world: dojo::world::WorldStorage, game_id: u32, player_id: u8) {
     let mut ps: PlayerState = world.read_model((game_id, player_id));
-    let income = ps.city_count * INCOME_PER_CITY;
-    if income == 0 {
-        return;
-    }
+    let income = INCOME_BASE + ps.city_count * INCOME_PER_CITY;
     ps.gold += income;
     world.write_model(@ps);
 }
@@ -138,7 +135,7 @@ pub fn reset_stale_captures(
         let y = mb.y;
         let mut building: Building = world.read_model((game_id, x, y));
         if building.capture_player == player_id && building.capture_progress > 0 {
-            if !UnitImpl::infantry_exists_at(ref world, game_id, x, y, player_id) {
+            if !UnitImpl::capture_unit_exists_at(ref world, game_id, x, y, player_id) {
                 building.capture_player = 0;
                 building.capture_progress = 0;
                 world.write_model(@building);

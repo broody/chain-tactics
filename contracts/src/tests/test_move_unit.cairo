@@ -1,7 +1,9 @@
-use dojo::model::ModelStorage;
+use dojo::model::{ModelStorage, ModelStorageTest};
+use hashfront::models::game::Game;
+use hashfront::models::map::MapTile;
 use hashfront::models::unit::Unit;
 use hashfront::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
-use hashfront::types::Vec2;
+use hashfront::types::{TileType, UnitType, Vec2};
 use starknet::testing::{set_account_contract_address, set_contract_address};
 use super::common::{
     PLAYER1, PLAYER2, build_test_buildings, build_test_tiles, build_test_units, setup,
@@ -50,14 +52,18 @@ fn test_move_unit_one_step() {
 fn test_move_unit_full_range() {
     let (actions_dispatcher, mut world, game_id) = setup_playing_game();
 
-    // Infantry move_range = 3. Move (1,0) → (2,0) → (3,0) → (4,0)
+    // Infantry move_range = 4. Move (1,0) → (2,0) → (3,0) → (4,0) → (5,0)
     actions_dispatcher
         .move_unit(
-            game_id, 1, array![Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }, Vec2 { x: 4, y: 0 }],
+            game_id,
+            1,
+            array![
+                Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }, Vec2 { x: 4, y: 0 }, Vec2 { x: 5, y: 0 },
+            ],
         );
 
     let unit: Unit = world.read_model((game_id, 1_u8));
-    assert(unit.x == 4, 'x should be 4');
+    assert(unit.x == 5, 'x should be 5');
     assert(unit.y == 0, 'y should be 0');
 }
 
@@ -81,6 +87,15 @@ fn test_move_unit_already_moved() {
     actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 2, y: 0 }]);
     // Try moving again
     actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 3, y: 0 }]);
+}
+
+#[test]
+#[should_panic]
+fn test_move_unit_after_act() {
+    let (actions_dispatcher, _, game_id) = setup_playing_game();
+
+    actions_dispatcher.wait_unit(game_id, 1);
+    actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 2, y: 0 }]);
 }
 
 #[test]
@@ -117,13 +132,14 @@ fn test_move_unit_empty_path() {
 fn test_move_unit_exceeds_range() {
     let (actions_dispatcher, _, game_id) = setup_playing_game();
 
-    // 4 steps exceeds infantry range of 3
+    // 5 steps exceeds infantry range of 4
     actions_dispatcher
         .move_unit(
             game_id,
             1,
             array![
                 Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }, Vec2 { x: 4, y: 0 }, Vec2 { x: 5, y: 0 },
+                Vec2 { x: 6, y: 0 },
             ],
         );
 }
@@ -144,4 +160,97 @@ fn test_move_unit_steps_not_adjacent() {
 
     // (2,0) is adjacent to unit, but (4,0) is not adjacent to (2,0)
     actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 2, y: 0 }, Vec2 { x: 4, y: 0 }]);
+}
+
+#[test]
+fn test_tank_road_bonus_allows_four_road_steps() {
+    let (actions_dispatcher, mut world, game_id) = setup_playing_game();
+    let game: Game = world.read_model(game_id);
+    let map_id = game.map_id;
+
+    let mut unit: Unit = world.read_model((game_id, 1_u8));
+    unit.unit_type = UnitType::Tank;
+    unit.x = 0;
+    unit.y = 1;
+    world.write_model_test(@unit);
+
+    world.write_model_test(@MapTile { map_id, x: 0, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 1, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 2, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 3, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 4, y: 1, tile_type: TileType::Road });
+
+    actions_dispatcher
+        .move_unit(
+            game_id,
+            1,
+            array![
+                Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 1 }, Vec2 { x: 3, y: 1 }, Vec2 { x: 4, y: 1 },
+            ],
+        );
+
+    let moved: Unit = world.read_model((game_id, 1_u8));
+    assert(moved.x == 4, 'tank road bonus');
+    assert(moved.y == 1, 'tank y should remain 1');
+}
+
+#[test]
+#[should_panic]
+fn test_tank_road_bonus_is_lost_after_leaving_road() {
+    let (actions_dispatcher, mut world, game_id) = setup_playing_game();
+    let game: Game = world.read_model(game_id);
+    let map_id = game.map_id;
+
+    let mut unit: Unit = world.read_model((game_id, 1_u8));
+    unit.unit_type = UnitType::Tank;
+    unit.x = 0;
+    unit.y = 1;
+    world.write_model_test(@unit);
+
+    world.write_model_test(@MapTile { map_id, x: 0, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 1, y: 1, tile_type: TileType::Road });
+
+    // Leaves road at step 2; any remaining road bonus is discarded.
+    actions_dispatcher
+        .move_unit(
+            game_id,
+            1,
+            array![
+                Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 1 }, Vec2 { x: 3, y: 1 }, Vec2 { x: 4, y: 1 },
+            ],
+        );
+}
+
+#[test]
+fn test_ranger_road_bonus_allows_five_road_steps() {
+    let (actions_dispatcher, mut world, game_id) = setup_playing_game();
+    let game: Game = world.read_model(game_id);
+    let map_id = game.map_id;
+
+    let mut unit: Unit = world.read_model((game_id, 1_u8));
+    unit.unit_type = UnitType::Ranger;
+    unit.x = 0;
+    unit.y = 1;
+    world.write_model_test(@unit);
+
+    world.write_model_test(@MapTile { map_id, x: 0, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 1, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 2, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 3, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 4, y: 1, tile_type: TileType::Road });
+    world.write_model_test(@MapTile { map_id, x: 5, y: 1, tile_type: TileType::Road });
+
+    actions_dispatcher
+        .move_unit(
+            game_id,
+            1,
+            array![
+                Vec2 { x: 1, y: 1 }, Vec2 { x: 2, y: 1 }, Vec2 { x: 3, y: 1 }, Vec2 { x: 4, y: 1 },
+                Vec2 { x: 5, y: 1 },
+            ],
+        );
+
+    let moved: Unit = world.read_model((game_id, 1_u8));
+    assert(moved.x == 5, 'ranger road bonus');
+    assert(moved.y == 1, 'ranger y should remain 1');
 }
