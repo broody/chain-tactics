@@ -182,6 +182,7 @@ Flags reset at the start of the owning player's next turn.
 | **Wait** | `wait_unit(game_id, unit_id)` | End unit's turn without acting |
 | **Build** | `build_unit(game_id, factory_x, factory_y, unit_type)` | Queue production at owned factory |
 | **End Turn** | `end_turn(game_id)` | Pass control to next player |
+| **Resign** | `resign(game_id)` | Forfeit the game as the calling player |
 
 ### Capture Mechanics
 
@@ -196,7 +197,8 @@ Flags reset at the start of the owning player's next turn.
 
 1. **HQ Captured** — An infantry or ranger completes capture of an enemy HQ. Capturer wins instantly.
 2. **Elimination** — A player loses their HQ, or has 0 units + 0 factories + 0 gold. They are eliminated. Last player standing wins.
-3. **Timeout** — After 30 rounds, the alive player with the highest score (total unit HP + gold) wins.
+3. **Resignation** — A player can resign during an active game; they are immediately marked eliminated. If only one player remains alive, that player wins instantly.
+4. **Timeout** — After 30 rounds, the alive player with the highest score (total unit HP + gold) wins.
 
 ## Aesthetics & User Experience
 

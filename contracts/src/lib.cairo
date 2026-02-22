@@ -32,5 +32,6 @@ mod tests {
     mod test_join_game;
     mod test_move_unit;
     mod test_register_map;
+    mod test_resign;
     mod test_wait_unit;
 }

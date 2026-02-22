@@ -21,6 +21,7 @@ pub trait IActions<T> {
     fn wait_unit(ref self: T, game_id: u32, unit_id: u8);
     fn build_unit(ref self: T, game_id: u32, factory_x: u8, factory_y: u8, unit_type: UnitType);
     fn end_turn(ref self: T, game_id: u32);
+    fn resign(ref self: T, game_id: u32);
     fn get_terrain(self: @T, map_id: u8) -> (u8, u8, Array<u32>);
     fn get_buildings(self: @T, map_id: u8) -> (u8, u8, Array<u32>);
     fn get_units(self: @T, map_id: u8) -> (u8, u8, Array<u32>);
@@ -754,6 +755,106 @@ pub mod actions {
 
             world.write_model(@game);
             world.emit_event(@TurnEnded { game_id, next_player: next, round: new_round });
+        }
+
+        /// Resign from an active game. Marks the caller's player slot as eliminated.
+        /// If only one player remains alive, ends the game immediately.
+        fn resign(ref self: ContractState, game_id: u32) {
+            let mut world = self.world_default();
+            let caller = get_caller_address();
+
+            let mut game: Game = world.read_model(game_id);
+            assert(game.state == GameState::Playing, 'Game not playing');
+
+            let mut caller_player: u8 = 0;
+            let mut alive_matches: u8 = 0;
+            let mut p: u8 = 1;
+            while p <= game.player_count {
+                let ps: PlayerState = world.read_model((game_id, p));
+                if ps.address == caller && ps.is_alive {
+                    caller_player = p;
+                    alive_matches += 1;
+                }
+                p += 1;
+            }
+
+            assert(alive_matches > 0, 'Not an alive player');
+            assert(alive_matches == 1, 'Ambiguous player');
+
+            let mut resigned_ps: PlayerState = world.read_model((game_id, caller_player));
+            resigned_ps.is_alive = false;
+            world.write_model(@resigned_ps);
+
+            let mut alive_count: u8 = 0;
+            let mut last_alive: u8 = 0;
+            p = 1;
+            while p <= game.player_count {
+                let ps: PlayerState = world.read_model((game_id, p));
+                if ps.is_alive {
+                    alive_count += 1;
+                    last_alive = p;
+                }
+                p += 1;
+            }
+
+            assert(alive_count > 0, 'No alive players');
+
+            if alive_count == 1 {
+                game.state = GameState::Finished;
+                game.winner = last_alive;
+                world.write_model(@game);
+                world.emit_event(@GameOver { game_id, winner: last_alive });
+                return;
+            }
+
+            // If the current player resigns, advance turn immediately.
+            if caller_player == game.current_player {
+                let mut next = game.current_player;
+                let mut new_round = game.round;
+                let mut found = false;
+                let mut attempts: u8 = 0;
+
+                while attempts < game.player_count && !found {
+                    next = if next == game.player_count {
+                        1
+                    } else {
+                        next + 1
+                    };
+                    if next == 1 {
+                        new_round += 1;
+                    }
+                    let ps: PlayerState = world.read_model((game_id, next));
+                    if ps.is_alive {
+                        found = true;
+                    }
+                    attempts += 1;
+                }
+
+                assert(found, 'No alive players');
+
+                if new_round > MAX_ROUNDS {
+                    game.state = GameState::Finished;
+                    game
+                        .winner =
+                            game_helpers::timeout_winner(
+                                ref world, game_id, game.player_count, game.next_unit_id,
+                            );
+                    world.write_model(@game);
+                    world.emit_event(@GameOver { game_id, winner: game.winner });
+                    return;
+                }
+
+                game.current_player = next;
+                game.round = new_round;
+                game_helpers::run_income(ref world, game_id, next);
+                game_helpers::run_production(ref world, game_id, next, ref game);
+
+                world.write_model(@game);
+                world.emit_event(@TurnEnded { game_id, next_player: next, round: new_round });
+                return;
+            }
+
+            world.write_model(@game);
         }
 
         fn get_terrain(self: @ContractState, map_id: u8) -> (u8, u8, Array<u32>) {
