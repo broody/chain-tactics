@@ -47,7 +47,7 @@ interface PlayerStateNode {
   address: string;
 }
 
-type LobbyTab = "RECRUITMENT" | "MONITOR" | "COMMAND";
+type LobbyTab = "RECRUITMENT" | "COMMAND";
 
 function toNumber(value: string | number | null | undefined): number {
   if (typeof value === "number") return value;
@@ -570,19 +570,12 @@ export default function Lobby() {
             query = `
             SELECT g.* FROM "hashfront-Game" g
             ${exclusionJoin}
-            WHERE LOWER(g.state) = 'lobby' 
-            AND g.num_players < g.player_count 
-            ${exclusionWhere}
+            WHERE (
+              (LOWER(g.state) = 'lobby' AND g.num_players < g.player_count ${exclusionWhere})
+              OR LOWER(g.state) = 'playing'
+            )
             ${searchFilter.replace("name", "g.name")}
             ORDER BY g.game_id DESC
-            LIMIT 100
-          `;
-            break;
-          case "MONITOR":
-            query = `
-            SELECT * FROM "hashfront-Game" 
-            WHERE LOWER(state) = 'playing' ${searchFilter}
-            ORDER BY round DESC, game_id DESC
             LIMIT 100
           `;
             break;
@@ -769,7 +762,7 @@ export default function Lobby() {
       }}
       className={`flex-1 py-3 px-4 font-mono text-sm tracking-widest transition-all border-b-2 ${
         currentTab === tab
-          ? "border-white bg-white/10 text-white flicker-text"
+          ? "border-white bg-white/10 text-white"
           : "border-white/10 text-white/40 hover:text-white/70 hover:bg-white/5"
       }`}
     >
@@ -897,8 +890,7 @@ export default function Lobby() {
         >
           <div className="flex flex-col md:flex-row border-b border-white/20 mb-4 items-stretch">
             <div className="flex flex-1">
-              <TabButton tab="RECRUITMENT" label="RECRUITMENT" />
-              <TabButton tab="MONITOR" label="LIVE_OPS" />
+              <TabButton tab="RECRUITMENT" label="OPERATIONS" />
               <TabButton tab="COMMAND" label="MY_OPS" />
             </div>
             <div className="relative border-l border-white/20 min-w-[120px] lg:min-w-[180px] flex items-center bg-blueprint-dark/20 group flex-none">
@@ -956,9 +948,7 @@ export default function Lobby() {
                 </div>
                 <div className="text-xs mt-2 uppercase text-center px-4">
                   {currentTab === "RECRUITMENT" &&
-                    "All deployment slots currently occupied"}
-                  {currentTab === "MONITOR" &&
-                    "No active engagements detected in theater"}
+                    "No open or active operations detected"}
                   {currentTab === "COMMAND" &&
                     "No active commissions for current commander"}
                 </div>
