@@ -9,18 +9,14 @@ import {
 import { byteArray, hash, num } from "starknet";
 import { lookupAddresses } from "@cartridge/controller";
 import { ControllerConnector } from "@cartridge/connector";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useClient } from "urql";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { PixelButton } from "../components/PixelButton";
 import { PixelPanel } from "../components/PixelPanel";
 import { BlueprintContainer } from "../components/BlueprintContainer";
 import { ACTIONS_ADDRESS } from "../StarknetProvider";
 import { useToast } from "../components/Toast";
 import { parseTransactionError } from "../utils/parseTransactionError";
-
-interface GraphEdge<T> {
-  node: T;
-}
+import { fetchToriiSql } from "../utils/toriiSql";
 
 interface GameModelNode {
   game_id: string | number;
@@ -38,13 +34,6 @@ interface GameModelNode {
   winner?: string | number | null;
 }
 
-interface LobbyGamesQueryResult {
-  hashfrontGameModels: {
-    totalCount: string | number;
-    edges: GraphEdge<GameModelNode>[];
-  };
-}
-
 interface MapInfoNode {
   map_id: string | number;
   name: string;
@@ -53,22 +42,12 @@ interface MapInfoNode {
   width: string | number;
 }
 
-interface MapInfoQueryResult {
-  hashfrontMapInfoModels: {
-    edges: GraphEdge<MapInfoNode>[];
-  };
-}
-
 interface PlayerStateNode {
   player_id: string | number;
   address: string;
 }
 
-interface PlayerStateQueryResult {
-  hashfrontPlayerStateModels: {
-    edges: GraphEdge<PlayerStateNode>[];
-  };
-}
+type LobbyTab = "RECRUITMENT" | "MONITOR" | "COMMAND";
 
 function toNumber(value: string | number | null | undefined): number {
   if (typeof value === "number") return value;
@@ -79,30 +58,34 @@ function toNumber(value: string | number | null | undefined): number {
   return 0;
 }
 
-function parseGameState(value: string | number): "Lobby" | "Playing" | "Other" {
+function parseGameState(value: string | number): "Lobby" | "Playing" | "Finished" | "Other" {
   if (typeof value === "string") {
     if (value === "Lobby") return "Lobby";
     if (value === "Playing") return "Playing";
+    if (value === "Finished") return "Finished";
   }
 
   const numeric = Number(value);
   if (!Number.isNaN(numeric)) {
     if (numeric === 1) return "Lobby";
     if (numeric === 2) return "Playing";
+    if (numeric === 3) return "Finished";
   }
   return "Other";
 }
 
-function gameStatusLabel(state: "Lobby" | "Playing" | "Other"): string {
-  if (state === "Lobby") return "OPEN";
-  if (state === "Playing") return "IN_PROGRESS";
+function gameStatusLabel(state: "Lobby" | "Playing" | "Finished" | "Other"): string {
+  if (state === "Lobby") return "OPEN_RECRUITMENT";
+  if (state === "Playing") return "OPERATIONAL";
+  if (state === "Finished") return "DECOMMISSIONED";
   return "UNKNOWN";
 }
 
 function normalizeAddressHex(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
-    return `0x${BigInt(value).toString(16)}`;
+    const b = BigInt(value);
+    return `0x${b.toString(16).padStart(64, "0")}`;
   } catch {
     const normalized = value.toLowerCase();
     return normalized.startsWith("0x") ? normalized : `0x${normalized}`;
@@ -198,11 +181,10 @@ const ECGMonitor = ({
 
 export default function Lobby() {
   const { connect, connectors } = useConnect();
-  const { address } = useAccount();
+  const { address, status } = useAccount();
   const explorer = useExplorer();
   const { provider } = useProvider();
   const { sendAsync: sendTransaction } = useSendTransaction({});
-  const graphqlClient = useClient();
   const { toast, showErrorModal } = useToast();
   const navigate = useNavigate();
   const controllerConnector = useMemo(
@@ -210,10 +192,9 @@ export default function Lobby() {
     [connectors],
   );
   const [username, setUsername] = useState<string>();
+  const [currentTab, setCurrentTab] = useState<LobbyTab>("RECRUITMENT");
   const [games, setGames] = useState<GameModelNode[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
-  const [gamesLoadingMore, setGamesLoadingMore] = useState(false);
-  const [gamesTotalCount, setGamesTotalCount] = useState(0);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [mapInfos, setMapInfos] = useState<MapInfoNode[]>([]);
   const [mapsLoading, setMapsLoading] = useState(false);
@@ -233,6 +214,7 @@ export default function Lobby() {
   >(null);
   const [isJoining, setIsJoining] = useState(false);
   const [joiningGameId, setJoiningGameId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const gamesListRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -269,30 +251,17 @@ export default function Lobby() {
         throw new Error("Missing transaction hash");
       }
 
-      const waitResult = await provider.waitForTransaction(
-        tx.transaction_hash,
-        {
-          retryInterval: 500,
-        },
-      );
-      console.log("create_game waitForTransaction result:", waitResult);
-
       const receipt = await provider.getTransactionReceipt(tx.transaction_hash);
 
-      // Parse GameCreated event from receipt to get game_id
-      // Dojo events: keys[0]=EventEmitted selector, keys[1]=event selector, keys[2]=system address
-      // data: [keys_len, ...key_fields, values_len, ...value_fields]
       const eventEmittedSelector = hash.getSelectorFromName("EventEmitted");
       const normalizedActionsAddress = num.toHex(ACTIONS_ADDRESS);
       let createdGameId: number | null = null;
       if ("events" in receipt && Array.isArray(receipt.events)) {
         for (const event of receipt.events) {
           if (!event.keys || event.keys.length < 3 || !event.data) continue;
-          // Match EventEmitted selector and actions contract address
           if (num.toHex(event.keys[0]) !== num.toHex(eventEmittedSelector))
             continue;
           if (num.toHex(event.keys[2]) !== normalizedActionsAddress) continue;
-          // GameCreated has 1 key field (game_id) and 2 value fields (map_id, player_count)
           const keysLen = Number(event.data[0]);
           if (keysLen !== 1 || event.data.length < 4) continue;
           const valuesLen = Number(event.data[2]);
@@ -327,28 +296,13 @@ export default function Lobby() {
   async function fetchPlayersForGame(
     gameId: number,
   ): Promise<PlayerStateNode[]> {
-    const query = `
-      query {
-        hashfrontPlayerStateModels(where: {game_idEQ: ${gameId}}) {
-          edges {
-            node {
-              player_id
-              address
-            }
-          }
-        }
-      }
-    `;
-
-    const result = await graphqlClient
-      .query<PlayerStateQueryResult>(query, undefined, {
-        requestPolicy: "network-only",
-      })
-      .toPromise();
-    if (result.error || !result.data) return [];
-    return result.data.hashfrontPlayerStateModels.edges.map(
-      (edge) => edge.node,
-    );
+    try {
+      const query = `SELECT player_id, address FROM "hashfront-PlayerState" WHERE game_id = ${gameId}`;
+      return await fetchToriiSql<PlayerStateNode>(query);
+    } catch (error) {
+      console.error("Failed to fetch players via SQL:", error);
+      return [];
+    }
   }
 
   async function runJoinTransaction(gameId: number, playerId: number) {
@@ -443,7 +397,7 @@ export default function Lobby() {
     return () => {
       active = false;
     };
-  }, [graphqlClient, isJoinModalOpen, joinTargetGameId]);
+  }, [isJoinModalOpen, joinTargetGameId]);
 
   useEffect(() => {
     if (!isJoinModalOpen || joinPlayers.length === 0) {
@@ -501,87 +455,109 @@ export default function Lobby() {
     await runJoinTransaction(gameId, selectedJoinPlayerId);
   }
 
-  async function loadGamesPage(offset: number, append: boolean) {
-    if (append) {
-      setGamesLoadingMore(true);
-    } else {
-      setGamesLoading(true);
-    }
-    try {
-      const query = `
-        query {
-          hashfrontGameModels(
-            limit: 10
-            offset: ${offset}
-            order: {field: STATE, direction: ASC}
-          ) {
-            totalCount
-            edges {
-              node {
-                game_id
-                name
-                map_id
-                height
-                width
-                state
-                player_count
-                num_players
-                current_player
-                round
-                next_unit_id
-                is_test_mode
-                winner
-              }
-            }
-          }
-        }
-      `;
-
-      const result = await graphqlClient
-        .query<LobbyGamesQueryResult>(query, undefined, {
-          requestPolicy: "network-only",
-        })
-        .toPromise();
-      if (result.error || !result.data) return;
-
-      const connection = result.data.hashfrontGameModels;
-      const nextNodes = connection.edges.map((edge) => edge.node);
-
-      setGamesTotalCount(toNumber(connection.totalCount));
-      if (append) {
-        setGames((prev) => {
-          const existingIds = new Set(
-            prev.map((game) => toNumber(game.game_id)),
-          );
-          const deduped = nextNodes.filter(
-            (game) => !existingIds.has(toNumber(game.game_id)),
-          );
-          return [...prev, ...deduped];
-        });
-      } else {
-        setGames(nextNodes);
+  const loadGames = useCallback(
+    async (
+      tab: LobbyTab,
+      userAddress: string | undefined,
+      currentSearch: string,
+      active: { current: boolean },
+    ) => {
+      // If we're still determining the account status, don't trigger a fetch yet
+      if (status === "connecting" || status === "reconnecting") {
+        return;
       }
-    } finally {
-      setGamesLoading(false);
-      setGamesLoadingMore(false);
-    }
-  }
 
+      setGamesLoading(true);
+
+      try {
+        let query = "";
+        const normalizedAddress = normalizeAddressHex(userAddress);
+        const searchFilter = currentSearch.trim()
+          ? `AND name LIKE '%${currentSearch.trim().replace(/'/g, "''")}%'`
+          : "";
+
+        switch (tab) {
+          case "RECRUITMENT":
+            const exclusionJoin = normalizedAddress
+              ? `LEFT JOIN "hashfront-PlayerState" my_ps ON g.game_id = my_ps.game_id AND LOWER(my_ps.address) = LOWER('${normalizedAddress}')`
+              : "";
+            const exclusionWhere = normalizedAddress
+              ? "AND my_ps.address IS NULL"
+              : "";
+
+            query = `
+            SELECT g.* FROM "hashfront-Game" g
+            ${exclusionJoin}
+            WHERE LOWER(g.state) = 'lobby' 
+            AND g.num_players < g.player_count 
+            ${exclusionWhere}
+            ${searchFilter.replace("name", "g.name")}
+            ORDER BY g.game_id DESC
+            LIMIT 100
+          `;
+            break;
+          case "MONITOR":
+            query = `
+            SELECT * FROM "hashfront-Game" 
+            WHERE LOWER(state) = 'playing' ${searchFilter}
+            ORDER BY round DESC, game_id DESC
+            LIMIT 100
+          `;
+            break;
+          case "COMMAND":
+            if (!normalizedAddress) {
+              if (active.current) setGames([]);
+              setGamesLoading(false);
+              return;
+            }
+            query = `
+            SELECT DISTINCT g.* FROM "hashfront-Game" g
+            JOIN "hashfront-PlayerState" ps ON g.game_id = ps.game_id
+            WHERE LOWER(ps.address) = LOWER('${normalizedAddress}') ${searchFilter.replace("name", "g.name")}
+            ORDER BY g.game_id DESC
+            LIMIT 100
+          `;
+            break;
+        }
+
+        const rows = await fetchToriiSql<GameModelNode>(query);
+        if (active.current) {
+          setGames(rows);
+        }
+      } catch (error) {
+        console.error("Failed to load games via SQL:", error);
+        if (active.current) {
+          toast("SYSTEM_ERROR: Data feed interrupted.", "error");
+        }
+      } finally {
+        if (active.current) {
+          setGamesLoading(false);
+        }
+      }
+    },
+    [toast, status],
+  );
+
+  // Handle Search: Debounced
   useEffect(() => {
-    void loadGamesPage(0, false);
-  }, [graphqlClient]);
+    const active = { current: true };
+    const timer = setTimeout(() => {
+      void loadGames(currentTab, address, searchQuery, active);
+    }, 300);
+    return () => {
+      active.current = false;
+      clearTimeout(timer);
+    };
+  }, [searchQuery, loadGames]);
 
-  function handleGamesScroll() {
-    const el = gamesListRef.current;
-    if (!el) return;
-    if (gamesLoading || gamesLoadingMore) return;
-    if (games.length >= gamesTotalCount) return;
-
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (distanceFromBottom <= 80) {
-      void loadGamesPage(games.length, true);
-    }
-  }
+  // Handle Tab/Address Change: Immediate
+  useEffect(() => {
+    const active = { current: true };
+    void loadGames(currentTab, address, searchQuery, active);
+    return () => {
+      active.current = false;
+    };
+  }, [currentTab, address, loadGames]);
 
   useEffect(() => {
     let active = true;
@@ -589,35 +565,17 @@ export default function Lobby() {
     async function loadMaps() {
       setMapsLoading(true);
       try {
-        const query = `
-          query {
-            hashfrontMapInfoModels {
-              edges {
-                node {
-                  map_id
-                  name
-                  player_count
-                  height
-                  width
-                }
-              }
-            }
-          }
-        `;
-        const result = await graphqlClient
-          .query<MapInfoQueryResult>(query, undefined, {
-            requestPolicy: "network-only",
-          })
-          .toPromise();
-        if (!active || result.error || !result.data) return;
-        const rows = result.data.hashfrontMapInfoModels.edges.map(
-          (edge) => edge.node,
-        );
+        const query =
+          'SELECT map_id, name, player_count, height, width FROM "hashfront-MapInfo" ORDER BY map_id ASC';
+        const rows = await fetchToriiSql<MapInfoNode>(query);
+        if (!active) return;
         setMapInfos(rows);
         if (rows.length > 0) {
           const firstMapId = toNumber(rows[0].map_id);
           setSelectedMapId((prev) => prev ?? firstMapId);
         }
+      } catch (error) {
+        console.error("Failed to load maps via SQL:", error);
       } finally {
         if (active) setMapsLoading(false);
       }
@@ -627,7 +585,7 @@ export default function Lobby() {
     return () => {
       active = false;
     };
-  }, [graphqlClient]);
+  }, []);
 
   const selectedMapInfo = useMemo(
     () =>
@@ -651,6 +609,41 @@ export default function Lobby() {
       return prev;
     });
   }, [selectedMapPlayerCount]);
+
+  const TabButton = ({
+    tab,
+    label,
+    count,
+  }: {
+    tab: LobbyTab;
+    label: string;
+    count?: number;
+  }) => (
+    <button
+      onClick={() => {
+        setCurrentTab(tab);
+        setGames([]); // Explicitly clear on tab switch to prevent bleed
+      }}
+      className={`flex-1 py-3 px-4 font-mono text-sm tracking-widest transition-all border-b-2 ${
+        currentTab === tab
+          ? "border-white bg-white/10 text-white flicker-text"
+          : "border-white/10 text-white/40 hover:text-white/70 hover:bg-white/5"
+      }`}
+    >
+      <div className="flex items-center justify-center gap-2">
+        <span>
+          {currentTab === tab ? "> " : ""}[{label}]
+        </span>
+        {count !== undefined && (
+          <span
+            className={`text-[10px] px-1 border ${currentTab === tab ? "border-white" : "border-white/20"}`}
+          >
+            {count}
+          </span>
+        )}
+      </div>
+    </button>
+  );
 
   return (
     <BlueprintContainer>
@@ -688,8 +681,8 @@ export default function Lobby() {
         <div className="relative z-10 flex items-center gap-3 lg:gap-4">
           <div className="hidden md:block">
             <svg
-              width="48"
-              height="48"
+              width="64"
+              height="64"
               viewBox="0 0 40 40"
               className="flicker-text"
             >
@@ -725,7 +718,7 @@ export default function Lobby() {
                 LIVE
               </span>
             </h1>
-            <div className="text-sm mt-1 opacity-80 font-mono">
+            <div className="text-sm mt-1 opacity-80 font-mono uppercase">
               &gt; SYSTEM_READY // TPS: 5.3 // CHAIN: SEPOLIA
             </div>
           </div>
@@ -754,21 +747,76 @@ export default function Lobby() {
 
       <div className="grid md:grid-cols-[2.5fr_1fr] gap-4 lg:gap-8 flex-1 min-h-0 overflow-hidden">
         <PixelPanel
-          title="DEPLOYMENTS"
-          className="flex flex-col gap-0 min-h-0 overflow-hidden"
+          title=""
+          className="flex flex-col gap-0 min-h-0 overflow-hidden h-full"
         >
+          <div className="flex flex-col md:flex-row border-b border-white/20 mb-4 items-stretch">
+            <div className="flex flex-1">
+              <TabButton tab="RECRUITMENT" label="RECRUITMENT" />
+              <TabButton tab="MONITOR" label="LIVE_OPS" />
+              <TabButton tab="COMMAND" label="MY_OPS" />
+            </div>
+            <div className="relative border-l border-white/20 min-w-[120px] lg:min-w-[180px] flex items-center bg-blueprint-dark/20 group flex-none">
+              <div className="pl-3 pr-2 text-white/30 group-focus-within:text-white transition-colors">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="SEARCH..."
+                className="w-full bg-transparent border-none outline-none py-3 pr-4 text-xs font-mono tracking-widest placeholder:text-white/20 text-white"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="pr-3 text-white/30 hover:text-white transition-colors"
+                >
+                  [X]
+                </button>
+              )}
+            </div>
+          </div>
+
           <div
             ref={gamesListRef}
-            onScroll={handleGamesScroll}
-            className="space-y-0 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0"
+            className="space-y-0 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0 flex flex-col"
           >
-            {gamesLoading ? (
-              <div className="border-b-2 border-dashed border-white py-5 text-sm opacity-80">
-                SYNCING OPERATIONS...
+            {(gamesLoading ||
+              status === "connecting" ||
+              status === "reconnecting") &&
+            games.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center animate-pulse py-10">
+                <div className="text-lg font-mono tracking-widest">
+                  &gt; SCANNING_SECTORS...
+                </div>
+                <div className="text-xs opacity-50 mt-2 uppercase">
+                  Syncing distributed ledger state
+                </div>
               </div>
             ) : games.length === 0 ? (
-              <div className="border-b-2 border-dashed border-white py-5 text-sm opacity-80">
-                NO ACTIVE OPERATIONS
+              <div className="flex-1 flex flex-col items-center justify-center opacity-40 py-10">
+                <div className="text-lg font-mono tracking-widest">
+                  &gt; NO_DATA_FOUND
+                </div>
+                <div className="text-xs mt-2 uppercase text-center px-4">
+                  {currentTab === "RECRUITMENT" &&
+                    "All deployment slots currently occupied"}
+                  {currentTab === "MONITOR" &&
+                    "No active engagements detected in theater"}
+                  {currentTab === "COMMAND" &&
+                    "No active commissions for current commander"}
+                </div>
               </div>
             ) : (
               games.map((game) => {
@@ -777,16 +825,30 @@ export default function Lobby() {
                 const statusLabel = gameStatusLabel(state);
                 const isLobby = state === "Lobby";
                 const isPlaying = state === "Playing";
+                const isFinished = state === "Finished";
                 const isJoiningThisGame = joiningGameId === gameId;
-                const actionLabel = isLobby ? "JOIN" : "WATCH_FEED";
+
+                // Show JOIN for Recruitment, otherwise show WATCH or RE-ENTER
+                const isMyGame = currentTab === "COMMAND";
+                let actionLabel = "";
+                if (isFinished) {
+                  actionLabel = "REVIEW_LOGS";
+                } else if (isLobby) {
+                  actionLabel = isMyGame ? "RE-ENTER" : "JOIN";
+                } else {
+                  actionLabel = isMyGame ? "RESUME" : "WATCH_FEED";
+                }
 
                 return (
                   <div
                     key={gameId}
-                    className="border-b-2 border-dashed border-white py-6 grid grid-cols-[50px_70px_1fr_180px] items-center gap-4 hover:bg-white/10 transition-colors relative"
+                    className="border-b border-dashed border-white/20 py-6 grid grid-cols-[50px_70px_1fr_180px] items-center gap-4 hover:bg-white/5 transition-colors relative group"
                   >
-                    <div className="text-sm opacity-50 font-mono">
-                      #{gameId}
+                    {/* Background decor line on hover */}
+                    <div className="absolute inset-y-4 left-0 w-1 bg-white opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                    <div className="text-xs opacity-40 font-mono">
+                      #{String(gameId).padStart(4, "0")}
                     </div>
                     <div className="flex items-center">
                       <ECGMonitor
@@ -795,59 +857,90 @@ export default function Lobby() {
                       />
                     </div>
                     <div>
-                      <div className="text-lg font-bold flex items-center gap-2">
+                      <div className="text-lg font-bold flex items-center gap-2 tracking-wide uppercase">
                         {game.name || `OPERATION_${gameId}`}
                         {isPlaying && (
-                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                          <div className="flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                            <span className="text-[9px] text-red-500 font-mono">
+                              [ACTIVE]
+                            </span>
+                          </div>
                         )}
                       </div>
-                      <div className="text-xs mt-1 uppercase opacity-80 flex flex-col gap-1">
+                      <div className="text-sm mt-1.5 uppercase opacity-70 font-mono grid grid-cols-2 gap-x-4">
                         <div>
-                          STATUS: {statusLabel} // SLOTS:{" "}
-                          {toNumber(game.num_players)}/
-                          {toNumber(game.player_count)}
+                          Status:{" "}
+                          <span
+                            className={
+                              isLobby ? "text-green-400" : "text-blue-400"
+                            }
+                          >
+                            {statusLabel}
+                          </span>
                         </div>
                         <div>
+                          SLOTS:{" "}
+                          <span className="text-white">
+                            {toNumber(game.num_players)}/
+                            {toNumber(game.player_count)}
+                          </span>
+                        </div>
+                        <div className="col-span-2 mt-1">
                           MAP:{" "}
-                          {mapInfos.find((m) => toNumber(m.map_id) === toNumber(game.map_id))?.name?.toUpperCase().replace(/ /g, "_") || toNumber(game.map_id)}{" "}
-                          //{" "}
-                          {isPlaying
-                            ? `ROUND: ${toNumber(game.round)}`
-                            : "PREPARING..."}
+                          <span className="text-white">
+                            {(() => {
+                              const m = mapInfos.find(
+                                (m) =>
+                                  toNumber(m.map_id) === toNumber(game.map_id),
+                              );
+                              return (
+                                m?.name?.toUpperCase().replace(/ /g, "_") ||
+                                `MAP_${game.map_id}`
+                              );
+                            })()}
+                          </span>
+                          {isPlaying && ` // ROUND: ${toNumber(game.round)}`}
                         </div>
                       </div>
                     </div>
-                    {isLobby ? (
-                      <PixelButton
-                        className="w-full flex items-center justify-center gap-2"
-                        variant="blue"
-                        onClick={() => void handleJoinGame(game)}
-                        disabled={isJoiningThisGame}
-                      >
-                        {isJoiningThisGame && (
-                          <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        )}
-                        {isJoiningThisGame ? "JOINING..." : actionLabel}
-                      </PixelButton>
-                    ) : (
-                      <Link to={`/game/${gameId}`}>
-                        <PixelButton className="w-full" variant="blue">
-                          {actionLabel}
+                    <div className="flex flex-col gap-2">
+                      {isLobby && !isMyGame ? (
+                        <PixelButton
+                          className="w-full flex items-center justify-center gap-2 !py-2.5"
+                          variant="blue"
+                          onClick={() => void handleJoinGame(game)}
+                          disabled={isJoiningThisGame}
+                        >
+                          {isJoiningThisGame && (
+                            <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                          )}
+                          {isJoiningThisGame ? "JOINING..." : actionLabel}
                         </PixelButton>
-                      </Link>
-                    )}
+                      ) : (
+                        <Link to={`/game/${gameId}`} className="w-full">
+                          <PixelButton
+                            className="w-full !py-2.5"
+                            variant={isFinished ? "gray" : isPlaying ? "blue" : "green"}
+                          >
+                            {actionLabel}
+                          </PixelButton>
+                        </Link>
+                      )}
+                      {isPlaying && (
+                        <div className="text-[8px] text-center opacity-30 font-mono tracking-tighter">
+                          LAST_PACKET_RECEIVED: {Math.floor(Math.random() * 60)}
+                          S AGO
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })
             )}
-            {gamesLoadingMore && (
-              <div className="py-3 text-xs opacity-70 text-center">
-                LOADING MORE DEPLOYMENTS...
-              </div>
-            )}
           </div>
 
-          <div className="mt-4 pt-4 border-t-2 border-white/20">
+          <div className="mt-4 pt-4 border-t border-white/20">
             <PixelButton
               variant="green"
               onClick={() => {
@@ -860,7 +953,7 @@ export default function Lobby() {
               className="w-full py-4 text-lg flicker-text"
               style={{ animationDelay: "-0.8s" }}
             >
-              DEPLOY NEW OPERATION
+              INITIATE_NEW_DEPLOYMENT
             </PixelButton>
           </div>
         </PixelPanel>
@@ -952,14 +1045,14 @@ export default function Lobby() {
             </div>
           </PixelPanel>
 
-          <PixelPanel title="24HR STATUS">
+          <PixelPanel title="Status">
             <div className="text-base space-y-4">
               <div className="flex justify-between items-end ">
                 <div className="flex flex-col">
-                  <span className="text-xs opacity-50 uppercase tracking-tighter">
+                  <span className="text-sm opacity-60 uppercase tracking-tighter">
                     IN_PROGRESS
                   </span>
-                  <span className="font-bold text-xl">342</span>
+                  <span className="font-bold text-2xl">342</span>
                 </div>
                 <div className="h-8 w-16">
                   <svg
@@ -977,10 +1070,10 @@ export default function Lobby() {
               </div>
               <div className="flex justify-between items-end ">
                 <div className="flex flex-col">
-                  <span className="text-xs opacity-50 uppercase tracking-tighter">
+                  <span className="text-sm opacity-60 uppercase tracking-tighter">
                     COMPLETED
                   </span>
-                  <span className="font-bold text-xl">1420</span>
+                  <span className="font-bold text-2xl">1420</span>
                 </div>
                 <div className="h-8 w-16">
                   <svg
@@ -998,10 +1091,10 @@ export default function Lobby() {
               </div>
               <div className="flex justify-between items-end ">
                 <div className="flex flex-col">
-                  <span className="text-xs opacity-50 uppercase tracking-tighter">
+                  <span className="text-sm opacity-60 uppercase tracking-tighter">
                     TRANSACTIONS
                   </span>
-                  <span className="font-bold text-xl">12K</span>
+                  <span className="font-bold text-2xl">12K</span>
                 </div>
                 <div className="h-8 w-16">
                   <svg
@@ -1073,7 +1166,7 @@ export default function Lobby() {
                   </PixelButton>
                 </div>
 
-                <label className="text-xs uppercase tracking-widest flex flex-col gap-2">
+                <label className="text-sm uppercase tracking-widest flex flex-col gap-2">
                   OPERATION NAME
                   <input
                     value={operationName}
@@ -1084,12 +1177,12 @@ export default function Lobby() {
                     }
                     placeholder="e.g. Iron Ridge Offensive"
                     maxLength={30}
-                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none tracking-wide"
+                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none tracking-wide text-base"
                     disabled={isDeploying}
                   />
                 </label>
 
-                <label className="text-xs uppercase tracking-widest flex flex-col gap-2">
+                <label className="text-sm uppercase tracking-widest flex flex-col gap-2">
                   MAP
                   <select
                     value={selectedMapId ?? ""}
@@ -1100,7 +1193,7 @@ export default function Lobby() {
                           : null,
                       )
                     }
-                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none"
+                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none text-base"
                     disabled={
                       isDeploying || mapsLoading || mapInfos.length === 0
                     }
@@ -1113,14 +1206,15 @@ export default function Lobby() {
                       const mapId = toNumber(mapInfo.map_id);
                       return (
                         <option key={mapId} value={mapId}>
-                          {mapInfo.name?.toUpperCase().replace(/ /g, "_") || `MAP ${mapId}`}
+                          {mapInfo.name?.toUpperCase().replace(/ /g, "_") ||
+                            `MAP ${mapId}`}
                         </option>
                       );
                     })}
                   </select>
                 </label>
 
-                <label className="text-xs uppercase tracking-widest flex flex-col gap-2">
+                <label className="text-sm uppercase tracking-widest flex flex-col gap-2">
                   PLAYER SELECT
                   <select
                     value={selectedPlayerId ?? ""}
@@ -1131,7 +1225,7 @@ export default function Lobby() {
                           : null,
                       )
                     }
-                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none"
+                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none text-base"
                     disabled={
                       isDeploying ||
                       !selectedMapInfo ||
@@ -1158,18 +1252,18 @@ export default function Lobby() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="border border-white/30 p-4 min-h-[170px] bg-blueprint-dark/60">
-                    <div className="text-xs uppercase tracking-widest opacity-70 mb-2">
+                    <div className="text-sm uppercase tracking-widest opacity-80 mb-2">
                       Map Preview (Placeholder)
                     </div>
-                    <div className="w-full h-[120px] border border-dashed border-white/30 flex items-center justify-center text-xs uppercase tracking-widest opacity-60">
+                    <div className="w-full h-[120px] border border-dashed border-white/30 flex items-center justify-center text-sm uppercase tracking-widest opacity-60">
                       Preview coming soon
                     </div>
                   </div>
                   <div className="border border-white/30 p-4 bg-blueprint-dark/60">
-                    <div className="text-xs uppercase tracking-widest opacity-70 mb-3">
+                    <div className="text-sm uppercase tracking-widest opacity-80 mb-3">
                       Map Details
                     </div>
-                    <div className="text-sm space-y-2 uppercase tracking-wide">
+                    <div className="text-base space-y-2 uppercase tracking-wide">
                       <div>
                         PLAYER COUNT:{" "}
                         <span className="font-bold">
@@ -1243,10 +1337,10 @@ export default function Lobby() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="border border-white/30 p-4 bg-blueprint-dark/60">
-                    <div className="text-xs uppercase tracking-widest opacity-70 mb-3">
+                    <div className="text-sm uppercase tracking-widest opacity-80 mb-3">
                       Deployment Details
                     </div>
-                    <div className="text-sm space-y-2 uppercase tracking-wide">
+                    <div className="text-base space-y-2 uppercase tracking-wide">
                       <div>
                         NAME:{" "}
                         <span className="font-bold">
@@ -1257,7 +1351,15 @@ export default function Lobby() {
                       <div>
                         MAP:{" "}
                         <span className="font-bold">
-                          {mapInfos.find((m) => toNumber(m.map_id) === toNumber(joinTargetGame.map_id))?.name?.toUpperCase().replace(/ /g, "_") || toNumber(joinTargetGame.map_id)}
+                          {mapInfos
+                            .find(
+                              (m) =>
+                                toNumber(m.map_id) ===
+                                toNumber(joinTargetGame.map_id),
+                            )
+                            ?.name?.toUpperCase()
+                            .replace(/ /g, "_") ||
+                            toNumber(joinTargetGame.map_id)}
                         </span>
                       </div>
                       <div>
@@ -1286,10 +1388,10 @@ export default function Lobby() {
                   </div>
 
                   <div className="border border-white/30 p-4 bg-blueprint-dark/60">
-                    <div className="text-xs uppercase tracking-widest opacity-70 mb-3">
+                    <div className="text-sm uppercase tracking-widest opacity-80 mb-3">
                       Current Players
                     </div>
-                    <div className="text-sm space-y-2 uppercase tracking-wide">
+                    <div className="text-base space-y-2 uppercase tracking-wide">
                       {joinPlayersLoading ? (
                         <div className="opacity-70">Loading players...</div>
                       ) : joinPlayers.length === 0 ? (
@@ -1311,7 +1413,7 @@ export default function Lobby() {
                   </div>
                 </div>
 
-                <label className="text-xs uppercase tracking-widest flex flex-col gap-2">
+                <label className="text-sm uppercase tracking-widest flex flex-col gap-2">
                   PLAYER SELECT
                   <select
                     value={selectedJoinPlayerId ?? ""}
@@ -1322,7 +1424,7 @@ export default function Lobby() {
                           : null,
                       )
                     }
-                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none"
+                    className="bg-blueprint-dark/80 border border-white/40 px-3 py-2 outline-none text-base"
                     disabled={isJoining || joinPlayersLoading}
                   >
                     {joinAvailablePlayerIds.length === 0 ? (
