@@ -58,7 +58,9 @@ function toNumber(value: string | number | null | undefined): number {
   return 0;
 }
 
-function parseGameState(value: string | number): "Lobby" | "Playing" | "Finished" | "Other" {
+function parseGameState(
+  value: string | number,
+): "Lobby" | "Playing" | "Finished" | "Other" {
   if (typeof value === "string") {
     if (value === "Lobby") return "Lobby";
     if (value === "Playing") return "Playing";
@@ -74,7 +76,9 @@ function parseGameState(value: string | number): "Lobby" | "Playing" | "Finished
   return "Other";
 }
 
-function gameStatusLabel(state: "Lobby" | "Playing" | "Finished" | "Other"): string {
+function gameStatusLabel(
+  state: "Lobby" | "Playing" | "Finished" | "Other",
+): string {
   if (state === "Lobby") return "OPEN_RECRUITMENT";
   if (state === "Playing") return "OPERATIONAL";
   if (state === "Finished") return "DECOMMISSIONED";
@@ -219,6 +223,11 @@ export default function Lobby() {
   const [joiningGameId, setJoiningGameId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const gamesListRef = useRef<HTMLDivElement | null>(null);
+  const [statsInProgress, setStatsInProgress] = useState<number | null>(null);
+  const [statsCompleted, setStatsCompleted] = useState<number | null>(null);
+  const [statsTransactions, setStatsTransactions] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     if (controllerReady) return;
@@ -601,6 +610,39 @@ export default function Lobby() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadStats() {
+      try {
+        const [inProgress, completed, transactions] = await Promise.all([
+          fetchToriiSql<{ count: number }>(
+            `SELECT COUNT(*) as count FROM "hashfront-Game" WHERE LOWER(state) IN ('lobby', 'playing')`,
+          ),
+          fetchToriiSql<{ count: number }>(
+            `SELECT COUNT(*) as count FROM "hashfront-Game" WHERE LOWER(state) = 'finished'`,
+          ),
+          fetchToriiSql<{ count: number }>(
+            `SELECT COUNT(*) as count FROM transactions`,
+          ),
+        ]);
+        if (!active) return;
+        setStatsInProgress(inProgress[0]?.count ?? 0);
+        setStatsCompleted(completed[0]?.count ?? 0);
+        setStatsTransactions(transactions[0]?.count ?? 0);
+      } catch (error) {
+        console.error("Failed to load stats:", error);
+      }
+    }
+
+    void loadStats();
+    const interval = setInterval(loadStats, 10_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const selectedMapInfo = useMemo(
     () =>
       mapInfos.find((mapInfo) => toNumber(mapInfo.map_id) === selectedMapId) ??
@@ -636,7 +678,6 @@ export default function Lobby() {
     <button
       onClick={() => {
         setCurrentTab(tab);
-        setGames([]); // Explicitly clear on tab switch to prevent bleed
       }}
       className={`flex-1 py-3 px-4 font-mono text-sm tracking-widest transition-all border-b-2 ${
         currentTab === tab
@@ -936,7 +977,9 @@ export default function Lobby() {
                         <Link to={`/game/${gameId}`} className="w-full">
                           <PixelButton
                             className="w-full !py-2.5"
-                            variant={isFinished ? "gray" : isPlaying ? "blue" : "green"}
+                            variant={
+                              isFinished ? "gray" : isPlaying ? "blue" : "green"
+                            }
                           >
                             {actionLabel}
                           </PixelButton>
@@ -1067,7 +1110,9 @@ export default function Lobby() {
                   <span className="text-sm opacity-60 uppercase tracking-tighter">
                     IN_PROGRESS
                   </span>
-                  <span className="font-bold text-2xl">342</span>
+                  <span className="font-bold text-2xl">
+                    {statsInProgress ?? "-"}
+                  </span>
                 </div>
                 <div className="h-8 w-16">
                   <svg
@@ -1088,7 +1133,9 @@ export default function Lobby() {
                   <span className="text-sm opacity-60 uppercase tracking-tighter">
                     COMPLETED
                   </span>
-                  <span className="font-bold text-2xl">1420</span>
+                  <span className="font-bold text-2xl">
+                    {statsCompleted ?? "-"}
+                  </span>
                 </div>
                 <div className="h-8 w-16">
                   <svg
@@ -1109,7 +1156,13 @@ export default function Lobby() {
                   <span className="text-sm opacity-60 uppercase tracking-tighter">
                     TRANSACTIONS
                   </span>
-                  <span className="font-bold text-2xl">12K</span>
+                  <span className="font-bold text-2xl">
+                    {statsTransactions !== null
+                      ? statsTransactions >= 1000
+                        ? `${(statsTransactions / 1000).toFixed(1)}K`
+                        : statsTransactions
+                      : "-"}
+                  </span>
                 </div>
                 <div className="h-8 w-16">
                   <svg
