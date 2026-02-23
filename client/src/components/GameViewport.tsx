@@ -26,22 +26,40 @@ import { ACTIONS_ADDRESS } from "../StarknetProvider";
 
 const WORLD_SIZE = GRID_SIZE * TILE_PX;
 
-function isPlayerInGame(address: string | undefined): boolean {
-  if (!address) return false;
-  const hex = num.toHex(address);
-  return useGameStore
-    .getState()
-    .players.some((p) => num.toHex(p.address) === hex);
+function toNormalizedHex(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    return num.toHex(value);
+  } catch {
+    return null;
+  }
 }
 
-function getMyTeam(address: string | undefined): string | null {
-  if (!address) return null;
-  const hex = num.toHex(address);
-  const player = useGameStore
-    .getState()
-    .players.find((p) => num.toHex(p.address) === hex);
-  if (!player) return null;
-  return TEAMS[player.playerId] ?? null;
+function isPlayerInGame(address: string | undefined): boolean {
+  const connected = toNormalizedHex(address);
+  if (!connected) return false;
+  return useGameStore.getState().players.some((p) => {
+    const playerAddress = toNormalizedHex(p.address);
+    return playerAddress === connected;
+  });
+}
+
+function getControllableTeam(address: string | undefined): string | null {
+  const connected = toNormalizedHex(address);
+  if (!connected) return null;
+
+  const { game, players } = useGameStore.getState();
+  if (!game || game.state !== "Playing") return null;
+
+  const currentTurnPlayer = players.find(
+    (p) => p.playerId === game.currentPlayer,
+  );
+  if (!currentTurnPlayer) return null;
+
+  const turnAddress = toNormalizedHex(currentTurnPlayer.address);
+  if (!turnAddress || turnAddress !== connected) return null;
+
+  return TEAMS[game.currentPlayer] ?? null;
 }
 
 export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
@@ -724,15 +742,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     function isControllableUnit(unit: Unit | null): boolean {
       if (!unit) return false;
-      const { game } = useGameStore.getState();
-      if (!game) return false;
-      const currentTeam =
-        game.currentPlayer !== undefined
-          ? (TEAMS[game.currentPlayer] ?? null)
-          : null;
-      const allowedTeam = game.isTestMode
-        ? currentTeam
-        : getMyTeam(addressRef.current);
+      const allowedTeam = getControllableTeam(addressRef.current);
       return unit.team === allowedTeam;
     }
 
@@ -1031,13 +1041,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       if (useGameStore.getState().isEndingTurn) return;
       const { game } = useGameStore.getState();
       if (game?.state !== "Playing") return;
-      const currentTeam =
-        game?.currentPlayer !== undefined
-          ? (TEAMS[game.currentPlayer] ?? null)
-          : null;
-      const allowedTeam = game?.isTestMode
-        ? currentTeam
-        : getMyTeam(addressRef.current);
+      const allowedTeam = getControllableTeam(addressRef.current);
       if (!allowedTeam || selectedUnit.team !== allowedTeam) return;
       if (unitHasActed(selectedUnit)) return;
 

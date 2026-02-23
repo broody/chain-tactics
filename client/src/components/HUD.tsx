@@ -151,21 +151,21 @@ export default function HUD() {
 
   const currentPlayer = game?.currentPlayer ?? null;
   const gameName = game?.name ?? "";
-  const isTestMode = game?.isTestMode ?? false;
-
-  const myPlayerId = useMemo(() => {
-    if (!address) return null;
-    const normalizedAddress = normalizeAddressHex(address);
-    const myPlayer = players.find(
-      (p) => normalizeAddressHex(p.address) === normalizedAddress,
-    );
-    return myPlayer?.playerId ?? null;
-  }, [address, players]);
+  const connectedAddressHex = useMemo(
+    () => normalizeAddressHex(address),
+    [address],
+  );
+  const currentTurnAddressHex = useMemo(() => {
+    if (currentPlayer === null) return null;
+    const currentTurnPlayer = players.find((p) => p.playerId === currentPlayer);
+    return normalizeAddressHex(currentTurnPlayer?.address);
+  }, [currentPlayer, players]);
 
   const canEndTurn =
     game?.state === "Playing" &&
-    currentPlayer !== null &&
-    (isTestMode || (myPlayerId !== null && myPlayerId === currentPlayer));
+    connectedAddressHex !== null &&
+    currentTurnAddressHex !== null &&
+    connectedAddressHex === currentTurnAddressHex;
 
   const isLobby = game?.state === "Lobby";
   const canJoin = isLobby && !!address;
