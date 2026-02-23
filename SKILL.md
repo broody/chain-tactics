@@ -11,8 +11,8 @@ Guide for AI agents to play the Hashfront turn-based tactics game on Starknet **
 
 | Contract | Address |
 |----------|---------|
-| **World** | `0x07f87b22d97fcd790a1d784252128540a3f73be8d505558d4de27054da8a4db6` |
-| **Actions** | `0x4f2da423297032281e082ce530a876c3754f50bea0cf310a05aca847bfb609e` |
+| **World** | `0x006eff1d6038059b7fdea330389ef93267a83cbbf0dce5343c8792b5d78d639b` |
+| **Actions** | `0x05050094858a637c2c315b408377f7ce7d0481c4e60fd5bc732aad0ac7ab2862` |
 
 | Endpoint | URL |
 |----------|-----|

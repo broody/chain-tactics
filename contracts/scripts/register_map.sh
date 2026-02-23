@@ -185,7 +185,7 @@ if [ -n "$PROFILE" ]; then
   PROFILE_ARGS=(--profile "$PROFILE")
 fi
 
-sozo execute ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} hashfront-actions register_map \
+sozo execute --wait ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} hashfront-actions register_map \
   str:"$MAP_NAME" \
   $WIDTH $HEIGHT \
   $TILE_COUNT $TILES \

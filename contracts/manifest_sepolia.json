@@ -1,8 +1,8 @@
 {
   "world": {
     "class_hash": "0x613551abceb2b37073b1149bb862ea70cf029981ce1ca47e9dd7c7ab97cb65d",
-    "address": "0x7f87b22d97fcd790a1d784252128540a3f73be8d505558d4de27054da8a4db6",
-    "seed": "hashfront_sepolia3",
+    "address": "0x6eff1d6038059b7fdea330389ef93267a83cbbf0dce5343c8792b5d78d639b",
+    "seed": "hashfront_sepolia4",
     "name": "Hashfront",
     "entrypoints": [
       "uuid",
@@ -33,8 +33,8 @@
   },
   "contracts": [
     {
-      "address": "0x4f2da423297032281e082ce530a876c3754f50bea0cf310a05aca847bfb609e",
-      "class_hash": "0x6f0003345cbf0ba54e1aa6368c9cdc01847401b20704e7c9450e81ff8ea61c",
+      "address": "0x5050094858a637c2c315b408377f7ce7d0481c4e60fd5bc732aad0ac7ab2862",
+      "class_hash": "0x18804db99c6ef9e82edae37a536083584b6d4923bf51e03f765e343385e9251",
       "init_calldata": [],
       "tag": "hashfront-actions",
       "selector": "0x8b04e6669a8a23a1c372cc7c4078e7cea1d7e35253b6a592e2393a823fb26d",
@@ -48,6 +48,7 @@
         "wait_unit",
         "build_unit",
         "end_turn",
+        "resign",
         "upgrade"
       ]
     }
@@ -373,6 +374,53 @@
     {
       "members": [
         {
+          "name": "address",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "units_killed",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "units_lost",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "units_produced",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "buildings_captured",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "cities_captured",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "factories_captured",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "hqs_captured",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x12196aee0794a564b07097ec61b48a4e0cf0a35267c4f76ee985b647e09096a",
+      "tag": "hashfront-PlayerActionStats",
+      "selector": "0x3a7a64422564649616a97b946aeb36b085ed6f63556d3739ada16a07c417001"
+    },
+    {
+      "members": [
+        {
           "name": "game_id",
           "type": "core::integer::u32",
           "key": true
@@ -396,6 +444,63 @@
       "class_hash": "0x5c665e1aed7c13223432dbc8db7f0e67116d521d764079b0f36f1dc7d64a8b1",
       "tag": "hashfront-PlayerHQ",
       "selector": "0x5db29d55da819ee1f09f9d62235c352feae3d5d7afdfd313a5235b0a7323d06"
+    },
+    {
+      "members": [
+        {
+          "name": "address",
+          "type": "core::starknet::contract_address::ContractAddress",
+          "key": true
+        },
+        {
+          "name": "games_played",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "wins",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "losses",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "resignations",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "win_streak",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "best_win_streak",
+          "type": "core::integer::u16",
+          "key": false
+        },
+        {
+          "name": "wins_by_hq_capture",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "wins_by_elimination",
+          "type": "core::integer::u32",
+          "key": false
+        },
+        {
+          "name": "wins_by_timeout",
+          "type": "core::integer::u32",
+          "key": false
+        }
+      ],
+      "class_hash": "0x3e03d1d69196f27562d32c2815167d111bde5c3345efaf79eb874547e65c903",
+      "tag": "hashfront-PlayerMatchStats",
+      "selector": "0x131f8afa0df13bb0ef8969e23abd5346c1552023fc1e2f3497dfd281f510d20"
     },
     {
       "members": [
@@ -678,9 +783,19 @@
           "name": "damage_to_attacker",
           "type": "core::integer::u8",
           "key": false
+        },
+        {
+          "name": "attack_outcome",
+          "type": "hashfront::types::CombatOutcome",
+          "key": false
+        },
+        {
+          "name": "counter_outcome",
+          "type": "hashfront::types::CombatOutcome",
+          "key": false
         }
       ],
-      "class_hash": "0x1fe903cf87ef386e9cb0d323548b827bbd4e3f3f6f2576142e63677267b07fd",
+      "class_hash": "0x468c589fff1fc9b9a24b9749a80efafca252396ba8089b6b52f7998180a688f",
       "tag": "hashfront-UnitAttacked",
       "selector": "0xd8a329fd7df50ea4399dc8c1047778383178e66ad65a035e2214d0c4265c39"
     },
@@ -2803,6 +2918,14 @@
         {
           "name": "damage_to_attacker",
           "type": "core::integer::u8"
+        },
+        {
+          "name": "attack_outcome",
+          "type": "hashfront::types::CombatOutcome"
+        },
+        {
+          "name": "counter_outcome",
+          "type": "hashfront::types::CombatOutcome"
         }
       ]
     },
@@ -2825,6 +2948,14 @@
         {
           "name": "damage_to_attacker",
           "type": "core::integer::u8"
+        },
+        {
+          "name": "attack_outcome",
+          "type": "hashfront::types::CombatOutcome"
+        },
+        {
+          "name": "counter_outcome",
+          "type": "hashfront::types::CombatOutcome"
         }
       ]
     },
@@ -3610,6 +3741,178 @@
     },
     {
       "type": "struct",
+      "name": "hashfront::models::stats::PlayerActionStats",
+      "members": [
+        {
+          "name": "address",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "units_killed",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "units_lost",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "units_produced",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "buildings_captured",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "cities_captured",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "factories_captured",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "hqs_captured",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "hashfront::models::stats::PlayerActionStatsValue",
+      "members": [
+        {
+          "name": "units_killed",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "units_lost",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "units_produced",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "buildings_captured",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "cities_captured",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "factories_captured",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "hqs_captured",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "hashfront::models::stats::PlayerMatchStats",
+      "members": [
+        {
+          "name": "address",
+          "type": "core::starknet::contract_address::ContractAddress"
+        },
+        {
+          "name": "games_played",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "wins",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "losses",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "resignations",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "win_streak",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "best_win_streak",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "wins_by_hq_capture",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "wins_by_elimination",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "wins_by_timeout",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "struct",
+      "name": "hashfront::models::stats::PlayerMatchStatsValue",
+      "members": [
+        {
+          "name": "games_played",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "wins",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "losses",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "resignations",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "win_streak",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "best_win_streak",
+          "type": "core::integer::u16"
+        },
+        {
+          "name": "wins_by_hq_capture",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "wins_by_elimination",
+          "type": "core::integer::u32"
+        },
+        {
+          "name": "wins_by_timeout",
+          "type": "core::integer::u32"
+        }
+      ]
+    },
+    {
+      "type": "event",
+      "name": "hashfront::models::stats::m_PlayerActionStats::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "event",
+      "name": "hashfront::models::stats::m_PlayerMatchStats::Event",
+      "kind": "enum",
+      "variants": []
+    },
+    {
+      "type": "struct",
       "name": "hashfront::models::unit::Unit",
       "members": [
         {
@@ -3930,6 +4233,18 @@
         },
         {
           "type": "function",
+          "name": "resign",
+          "inputs": [
+            {
+              "name": "game_id",
+              "type": "core::integer::u32"
+            }
+          ],
+          "outputs": [],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
           "name": "get_terrain",
           "inputs": [
             {
@@ -4013,6 +4328,28 @@
         },
         {
           "name": "HQ",
+          "type": "()"
+        }
+      ]
+    },
+    {
+      "type": "enum",
+      "name": "hashfront::types::CombatOutcome",
+      "variants": [
+        {
+          "name": "None",
+          "type": "()"
+        },
+        {
+          "name": "Hit",
+          "type": "()"
+        },
+        {
+          "name": "Graze",
+          "type": "()"
+        },
+        {
+          "name": "Whiff",
           "type": "()"
         }
       ]
