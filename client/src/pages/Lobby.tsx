@@ -274,7 +274,9 @@ export default function Lobby() {
         throw new Error("Missing transaction hash");
       }
 
-      const receipt = await provider.getTransactionReceipt(tx.transaction_hash);
+      const receipt = await provider.waitForTransaction(tx.transaction_hash, {
+        retryInterval: 500,
+      });
 
       const eventEmittedSelector = hash.getSelectorFromName("EventEmitted");
       const normalizedActionsAddress = num.toHex(ACTIONS_ADDRESS);
