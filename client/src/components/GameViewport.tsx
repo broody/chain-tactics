@@ -490,10 +490,15 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     }
 
     // --- Blocked tiles from unit positions ---
-    function getBlockedTiles(excludeId: number): Set<number> {
+    function getBlockedTiles(
+      excludeId: number,
+      mode: "all" | "enemy",
+      unitTeam?: Unit["team"],
+    ): Set<number> {
       const blocked = new Set<number>();
       for (const u of useGameStore.getState().units) {
         if (u.id === excludeId) continue;
+        if (mode === "enemy" && unitTeam && u.team === unitTeam) continue;
         blocked.add(u.y * GRID_SIZE + u.x);
       }
       return blocked;
@@ -780,13 +785,20 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       if (unitHasMoved(selectedUnit)) return;
 
       const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
+      const transitBlocked = getBlockedTiles(
+        selectedUnit.id,
+        "enemy",
+        selectedUnit.team,
+      );
+      const destinationBlocked = getBlockedTiles(selectedUnit.id, "all");
       const reachable = findReachable(
         tileMap,
         selectedUnit.x,
         selectedUnit.y,
         range,
         selectedUnit.type,
-        getBlockedTiles(selectedUnit.id),
+        transitBlocked,
+        destinationBlocked,
       );
 
       const reachableSet = new Set(reachable.map((t) => `${t.x},${t.y}`));
@@ -1142,13 +1154,20 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
           // Need to move first — find closest reachable tile in attack range
           const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
+          const transitBlocked = getBlockedTiles(
+            selectedUnit.id,
+            "enemy",
+            selectedUnit.team,
+          );
+          const destinationBlocked = getBlockedTiles(selectedUnit.id, "all");
           const reachable = findReachable(
             tileMap,
             selectedUnit.x,
             selectedUnit.y,
             range,
             selectedUnit.type,
-            getBlockedTiles(selectedUnit.id),
+            transitBlocked,
+            destinationBlocked,
           );
 
           // Filter to tiles that put enemy in attack range
@@ -1180,7 +1199,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
               candidate.y,
               range,
               selectedUnit.type,
-              getBlockedTiles(selectedUnit.id),
+              transitBlocked,
+              destinationBlocked,
             );
             if (movePath.length > 0) break;
           }
@@ -1203,6 +1223,12 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
       // Regular move (no attack)
       const range = UNIT_MOVE_RANGE[selectedUnit.type] ?? 5;
+      const transitBlocked = getBlockedTiles(
+        selectedUnit.id,
+        "enemy",
+        selectedUnit.team,
+      );
+      const destinationBlocked = getBlockedTiles(selectedUnit.id, "all");
       const path = findPath(
         tileMap,
         selectedUnit.x,
@@ -1211,7 +1237,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
         gridY,
         range,
         selectedUnit.type,
-        getBlockedTiles(selectedUnit.id),
+        transitBlocked,
+        destinationBlocked,
       );
       if (path.length === 0) return;
 
@@ -1567,7 +1594,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
               unit.y,
               100, // generous range — move already confirmed on-chain
               prevUnit.type,
-              getBlockedTiles(unit.id),
+              getBlockedTiles(unit.id, "enemy", prevUnit.team),
+              getBlockedTiles(unit.id, "all"),
             );
             if (path.length > 0) {
               // Create a temporary unit at the old position for the movement system

@@ -109,9 +109,12 @@ export function findPath(
   maxSteps: number,
   unitType: string,
   blocked?: Set<number>,
+  destinationBlocked?: Set<number>,
 ): { x: number; y: number }[] {
   if (fromX === toX && fromY === toY) return [];
   const moveType = normalizeUnitType(unitType);
+  const transitBlocked = blocked;
+  const finalBlocked = destinationBlocked ?? blocked;
 
   // Check destination is in bounds and passable
   if (toX < 0 || toX >= GRID_SIZE || toY < 0 || toY >= GRID_SIZE) return [];
@@ -119,7 +122,7 @@ export function findPath(
   if (!canTraverseTile(moveType, destTile)) return [];
   const destCost = TILE_COST[destTile];
   if (destCost < 0) return [];
-  if (blocked?.has(coordKey(toX, toY))) return [];
+  if (finalBlocked?.has(coordKey(toX, toY))) return [];
 
   const open: Node[] = [];
   const closed = new Set<number>();
@@ -181,7 +184,7 @@ export function findPath(
       if (closed.has(nk)) continue;
 
       if (stepCost < 0) continue; // impassable
-      if (blocked?.has(coordKey(nx, ny))) continue; // occupied by unit
+      if (transitBlocked?.has(coordKey(nx, ny))) continue;
 
       const ng = current.g + stepCost;
       if (ng > maxSteps) continue; // exceeds movement budget
@@ -215,8 +218,11 @@ export function findReachable(
   maxSteps: number,
   unitType: string,
   blocked?: Set<number>,
+  destinationBlocked?: Set<number>,
 ): { x: number; y: number }[] {
   const moveType = normalizeUnitType(unitType);
+  const transitBlocked = blocked;
+  const finalBlocked = destinationBlocked ?? blocked;
   const bestG = new Map<number, number>();
   const startRoadBonus = initialRoadBonus(tileMap, fromX, fromY, moveType);
   const queue: {
@@ -254,7 +260,8 @@ export function findReachable(
         current.roadBonusRemaining,
       );
       if (stepCost < 0) continue;
-      if (blocked?.has(coordKey(nx, ny))) continue;
+      const coord = coordKey(nx, ny);
+      if (transitBlocked?.has(coord)) continue;
 
       const ng = current.g + stepCost;
       if (ng > maxSteps) continue;
@@ -266,10 +273,11 @@ export function findReachable(
       bestG.set(nk, ng);
       queue.push({ x: nx, y: ny, g: ng, roadBonusRemaining: nextRoadBonus });
 
-      const coord = coordKey(nx, ny);
       if (!seenCoords.has(coord)) {
         seenCoords.add(coord);
-        result.push({ x: nx, y: ny });
+        if (!finalBlocked?.has(coord)) {
+          result.push({ x: nx, y: ny });
+        }
       }
     }
   }
