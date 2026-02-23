@@ -191,6 +191,9 @@ export default function Lobby() {
     () => ControllerConnector.fromConnectors(connectors),
     [connectors],
   );
+  const [controllerReady, setControllerReady] = useState(
+    () => controllerConnector?.isReady() ?? false,
+  );
   const [username, setUsername] = useState<string>();
   const [currentTab, setCurrentTab] = useState<LobbyTab>("RECRUITMENT");
   const [games, setGames] = useState<GameModelNode[]>([]);
@@ -216,6 +219,17 @@ export default function Lobby() {
   const [joiningGameId, setJoiningGameId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const gamesListRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (controllerReady) return;
+    const interval = setInterval(() => {
+      if (controllerConnector?.isReady()) {
+        setControllerReady(true);
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [controllerConnector, controllerReady]);
 
   useEffect(() => {
     if (!address) return;
@@ -738,8 +752,9 @@ export default function Lobby() {
               variant="blue"
               onClick={() => connect({ connector: controllerConnector })}
               className="!py-1.5 !px-6 lg:!py-2 lg:!px-10 text-base lg:text-lg"
+              disabled={!controllerReady}
             >
-              CONNECT_SYSTEM
+              {controllerReady ? "CONNECT_SYSTEM" : "Connecting..."}
             </PixelButton>
           )}
         </div>
