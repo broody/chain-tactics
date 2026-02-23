@@ -1,7 +1,7 @@
 use dojo::model::{ModelStorage, ModelStorageTest};
 use hashfront::models::game::Game;
 use hashfront::models::map::MapTile;
-use hashfront::models::unit::Unit;
+use hashfront::models::unit::{Unit, UnitPosition};
 use hashfront::systems::actions::{IActionsDispatcher, IActionsDispatcherTrait};
 use hashfront::types::{TileType, UnitType, Vec2};
 use starknet::testing::{set_account_contract_address, set_contract_address};
@@ -160,6 +160,56 @@ fn test_move_unit_steps_not_adjacent() {
 
     // (2,0) is adjacent to unit, but (4,0) is not adjacent to (2,0)
     actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 2, y: 0 }, Vec2 { x: 4, y: 0 }]);
+}
+
+#[test]
+fn test_move_unit_can_pass_through_friendly_unit() {
+    let (actions_dispatcher, mut world, game_id) = setup_playing_game();
+
+    let mut friendly: Unit = world.read_model((game_id, 2_u8));
+    friendly.player_id = 1;
+    friendly.x = 2;
+    friendly.y = 0;
+    world.write_model_test(@friendly);
+    world.write_model_test(@UnitPosition { game_id, x: 18, y: 19, unit_id: 0 });
+    world.write_model_test(@UnitPosition { game_id, x: 2, y: 0, unit_id: 2 });
+
+    actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }]);
+
+    let moved: Unit = world.read_model((game_id, 1_u8));
+    assert(moved.x == 3, 'moved through friendly');
+    assert(moved.y == 0, 'y should be 0');
+}
+
+#[test]
+#[should_panic]
+fn test_move_unit_enemy_still_blocks_path() {
+    let (actions_dispatcher, mut world, game_id) = setup_playing_game();
+
+    let mut enemy: Unit = world.read_model((game_id, 2_u8));
+    enemy.x = 2;
+    enemy.y = 0;
+    world.write_model_test(@enemy);
+    world.write_model_test(@UnitPosition { game_id, x: 18, y: 19, unit_id: 0 });
+    world.write_model_test(@UnitPosition { game_id, x: 2, y: 0, unit_id: 2 });
+
+    actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 2, y: 0 }, Vec2 { x: 3, y: 0 }]);
+}
+
+#[test]
+#[should_panic]
+fn test_move_unit_cannot_end_on_friendly_unit() {
+    let (actions_dispatcher, mut world, game_id) = setup_playing_game();
+
+    let mut friendly: Unit = world.read_model((game_id, 2_u8));
+    friendly.player_id = 1;
+    friendly.x = 2;
+    friendly.y = 0;
+    world.write_model_test(@friendly);
+    world.write_model_test(@UnitPosition { game_id, x: 18, y: 19, unit_id: 0 });
+    world.write_model_test(@UnitPosition { game_id, x: 2, y: 0, unit_id: 2 });
+
+    actions_dispatcher.move_unit(game_id, 1, array![Vec2 { x: 2, y: 0 }]);
 }
 
 #[test]

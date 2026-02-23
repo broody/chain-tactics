@@ -402,7 +402,14 @@ pub mod actions {
 
                 if i + 1 < path_span.len() {
                     assert(
-                        !UnitImpl::exists_at(ref world, game_id, step.x, step.y, game.next_unit_id),
+                        !UnitImpl::enemy_exists_at(
+                            ref world,
+                            game_id,
+                            step.x,
+                            step.y,
+                            game.current_player,
+                            game.next_unit_id,
+                        ),
                         'Path blocked',
                     );
                 }
