@@ -35,15 +35,6 @@ function toNormalizedHex(value: string | undefined): string | null {
   }
 }
 
-function isPlayerInGame(address: string | undefined): boolean {
-  const connected = toNormalizedHex(address);
-  if (!connected) return false;
-  return useGameStore.getState().players.some((p) => {
-    const playerAddress = toNormalizedHex(p.address);
-    return playerAddress === connected;
-  });
-}
-
 function getControllableTeam(address: string | undefined): string | null {
   const connected = toNormalizedHex(address);
   if (!connected) return null;
@@ -979,8 +970,6 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     // --- Left-click selection (via pixi-viewport 'clicked' to avoid drag conflicts) ---
     function onVpClicked(e: { world: { x: number; y: number } }) {
-      const { isReplay } = useGameStore.getState();
-      if (!isReplay && !isPlayerInGame(addressRef.current)) return;
       if (useGameStore.getState().isEndingTurn) return;
 
       const gridX = Math.floor(e.world.x / TILE_PX);

@@ -633,8 +633,9 @@ export default function HUD() {
             <PixelPanel title="CONFIRM_RESIGNATION" className="!p-6">
               <div className="flex flex-col gap-6">
                 <div className="text-sm uppercase tracking-[0.2em] text-blueprint-light text-center leading-relaxed">
-                  ARE YOU SURE YOU WANT TO <span className="text-red-400">ABANDON</span> THE SECTOR? 
-                  <br/>
+                  ARE YOU SURE YOU WANT TO{" "}
+                  <span className="text-red-400">ABANDON</span> THE SECTOR?
+                  <br />
                   ALL FORCES WILL BE DECOMMISSIONED.
                 </div>
                 <div className="flex gap-4">
