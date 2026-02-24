@@ -7,7 +7,7 @@ import time
 
 from config import CONTRACT, TX_WAIT
 from planner import (
-    MoveAction, AttackAction, CaptureAction, WaitAction, EndTurnAction,
+    MoveAction, AttackAction, CaptureAction, EndTurnAction,
 )
 
 log = logging.getLogger("executor")
@@ -29,14 +29,10 @@ def actions_to_calls(game_id: int, actions: list) -> list:
     calls = []
 
     for action in actions:
-        # Skip wait/end_turn for the capturing unit and end_turn entirely if capture present
+        # Skip end_turn if capture present (game ends on capture)
         if has_capture:
             if isinstance(action, EndTurnAction):
                 continue
-            if isinstance(action, WaitAction):
-                # Skip wait for the capturing unit (it won't need one)
-                if any(isinstance(a, CaptureAction) and a.unit_id == action.unit_id for a in actions):
-                    continue
         if isinstance(action, MoveAction):
             path_flat = []
             for x, y in action.path:
@@ -58,13 +54,6 @@ def actions_to_calls(game_id: int, actions: list) -> list:
         elif isinstance(action, CaptureAction):
             # Capture is deferred to end of calls list (appended below)
             pass
-
-        elif isinstance(action, WaitAction):
-            calls.append({
-                "contractAddress": CONTRACT,
-                "entrypoint": "wait_unit",
-                "calldata": [str(game_id), str(action.unit_id)],
-            })
 
         elif isinstance(action, EndTurnAction):
             calls.append({
