@@ -48,7 +48,8 @@ function getControllableTeam(address: string | undefined): string | null {
   const connected = toNormalizedHex(address);
   if (!connected) return null;
 
-  const { game, players } = useGameStore.getState();
+  const { game, players, isReplay } = useGameStore.getState();
+  if (isReplay) return null;
   if (!game || game.state !== "Playing") return null;
 
   const currentTurnPlayer = players.find(
@@ -978,7 +979,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     // --- Left-click selection (via pixi-viewport 'clicked' to avoid drag conflicts) ---
     function onVpClicked(e: { world: { x: number; y: number } }) {
-      if (!isPlayerInGame(addressRef.current)) return;
+      const { isReplay } = useGameStore.getState();
+      if (!isReplay && !isPlayerInGame(addressRef.current)) return;
       if (useGameStore.getState().isEndingTurn) return;
 
       const gridX = Math.floor(e.world.x / TILE_PX);
@@ -1568,6 +1570,11 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       }
 
       // Add sprites for new units, animate position changes for existing
+      const isReplayMode = useGameStore.getState().isReplay;
+      if (isReplayMode) {
+        // Clear previous turn trails so each turn shows fresh tracks
+        remoteTrails.clear();
+      }
       for (const unit of newUnits) {
         const existing = unitSprites.get(unit.id);
         if (!existing) {
@@ -1585,35 +1592,54 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
             prevUnit && (prevUnit.x !== unit.x || prevUnit.y !== unit.y);
 
           if (moved) {
-            // Animate along a pathfound route from old to new position
-            const path = findPath(
-              tileMap,
-              prevUnit.x,
-              prevUnit.y,
-              unit.x,
-              unit.y,
-              100, // generous range — move already confirmed on-chain
-              prevUnit.type,
-              getBlockedTiles(unit.id, "enemy", prevUnit.team),
-              getBlockedTiles(unit.id, "all"),
-            );
-            if (path.length > 0) {
-              // Create a temporary unit at the old position for the movement system
+            if (isReplayMode) {
+              // Cancel any in-progress movement, snap to old pos, then animate
+              activeMovements.delete(unit.id);
+              existing.x = prevUnit.x * TILE_PX + TILE_PX / 2;
+              existing.y = prevUnit.y * TILE_PX + TILE_PX / 2;
               const animUnit: Unit = { ...prevUnit };
-              startMovement(animUnit, path);
-              // Track trail for remote movement
+              const replayPath = [{ x: unit.x, y: unit.y }];
+              startMovement(animUnit, replayPath);
+              // Register trail (footprints / tank tracks)
               remoteTrails.set(unit.id, {
                 unitId: unit.id,
                 originX: prevUnit.x,
                 originY: prevUnit.y,
-                path,
+                path: replayPath,
                 unit: animUnit,
                 fadeStart: null,
               });
             } else {
-              // No path found — teleport as fallback
-              existing.x = unit.x * TILE_PX + TILE_PX / 2;
-              existing.y = unit.y * TILE_PX + TILE_PX / 2;
+              // Animate along a pathfound route from old to new position
+              const path = findPath(
+                tileMap,
+                prevUnit.x,
+                prevUnit.y,
+                unit.x,
+                unit.y,
+                100, // generous range — move already confirmed on-chain
+                prevUnit.type,
+                getBlockedTiles(unit.id, "enemy", prevUnit.team),
+                getBlockedTiles(unit.id, "all"),
+              );
+              if (path.length > 0) {
+                // Create a temporary unit at the old position for the movement system
+                const animUnit: Unit = { ...prevUnit };
+                startMovement(animUnit, path);
+                // Track trail for remote movement
+                remoteTrails.set(unit.id, {
+                  unitId: unit.id,
+                  originX: prevUnit.x,
+                  originY: prevUnit.y,
+                  path,
+                  unit: animUnit,
+                  fadeStart: null,
+                });
+              } else {
+                // No path found — teleport as fallback
+                existing.x = unit.x * TILE_PX + TILE_PX / 2;
+                existing.y = unit.y * TILE_PX + TILE_PX / 2;
+              }
             }
           }
         }

@@ -129,6 +129,8 @@ interface GameStore {
   requestDeselect: () => void;
   isEndingTurn: boolean;
   setIsEndingTurn: (v: boolean) => void;
+  isReplay: boolean;
+  setIsReplay: (v: boolean) => void;
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -210,4 +212,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ _deselectRequested: true, selectedUnitId: null }),
   isEndingTurn: false,
   setIsEndingTurn: (v) => set({ isEndingTurn: v }),
+  isReplay: false,
+  setIsReplay: (v) => set({ isReplay: v }),
 }));

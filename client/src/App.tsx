@@ -3,6 +3,7 @@ import StarknetProvider from "./StarknetProvider";
 import GraphQLProvider from "./graphql/GraphQLProvider";
 import { DojoProvider } from "./dojo/DojoProvider";
 import Game from "./pages/Game";
+import Replay from "./pages/Replay";
 import Leaderboard from "./pages/Leaderboard";
 import Lobby from "./pages/Lobby";
 import Profile from "./pages/Profile";
@@ -19,6 +20,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Lobby />} />
                 <Route path="/game/:id" element={<Game />} />
+                <Route path="/replay/:id" element={<Replay />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/player/:address" element={<Profile />} />
                 <Route path="/logo-gallery" element={<LogoGallery />} />

@@ -1073,7 +1073,14 @@ export default function Lobby() {
                           {isJoiningThisGame ? "JOINING..." : actionLabel}
                         </PixelButton>
                       ) : (
-                        <Link to={`/game/${gameId}`} className="w-full">
+                        <Link
+                          to={
+                            isFinished
+                              ? `/replay/${gameId}`
+                              : `/game/${gameId}`
+                          }
+                          className="w-full"
+                        >
                           <PixelButton
                             className="w-full !py-2.5"
                             variant={
