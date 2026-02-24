@@ -82,12 +82,20 @@ function processEntityUpdates(
       entity.keys && entity.keys.length > 0 ? toBigInt(entity.keys[0]) : null;
 
     if (entityGameIdBI !== null && entityGameIdBI !== currentIdBI) {
+      console.warn(
+        `[Torii] KEY CROSS-TALK: Rejected entity with Key[0] ${entityGameIdBI} (Expected: ${currentIdBI})`,
+        entity,
+      );
       continue;
     }
 
     if (models.Game) {
       const g = models.Game;
       if (toBigInt(g.game_id) !== currentIdBI) {
+        console.warn(
+          `[Torii] MODEL CROSS-TALK (Game): Model game_id ${g.game_id} mismatch.`,
+          g,
+        );
         continue;
       }
 
@@ -109,6 +117,10 @@ function processEntityUpdates(
     if (models.Unit) {
       const u = models.Unit;
       if (toBigInt(u.game_id) !== currentIdBI) {
+        console.warn(
+          `[Torii] MODEL CROSS-TALK (Unit): Model game_id ${u.game_id} mismatch.`,
+          u,
+        );
         continue;
       }
 
@@ -148,6 +160,10 @@ function processEntityUpdates(
     if (models.PlayerState) {
       const p = models.PlayerState;
       if (toBigInt(p.game_id) !== currentIdBI) {
+        console.warn(
+          `[Torii] MODEL CROSS-TALK (PlayerState): Model game_id ${p.game_id} mismatch.`,
+          p,
+        );
         continue;
       }
 
@@ -263,54 +279,67 @@ export function useGameState(id: string | undefined): {
         store.setGame(null);
         store.setPlayers([]);
 
-        // Pad hex to 8 chars (u32) to ensure precise matching in Torii
-        const gameIdHex = `0x${gameIdNum.toString(16).padStart(8, "0")}`;
+        const gameIdHex = `0x${gameIdNum.toString(16)}`;
+        console.log(`[Torii] Subscribing to Sector ${id} (hex: ${gameIdHex})`);
 
-        // Subscribe to game entities with split clauses for better precision.
-        // FixedLen for models with ONLY game_id as key.
-        // VariableLen for models where game_id is just the prefix (Unit, Building).
-        const [initialData, subscription] = await sdk!.subscribeEntityQuery({
+        // Subscription 1: Targets models with only game_id as key.
+        const [initialData1, sub1] = await sdk!.subscribeEntityQuery({
           query: new ToriiQueryBuilder<Schema>()
-            .withClause({
-              Composite: {
-                operator: "Or",
-                clauses: [
-                  KeysClause<Schema>(
-                    ["hashfront-Game", "hashfront-PlayerState"],
-                    [gameIdHex],
-                    "FixedLen",
-                  ).build(),
-                  KeysClause<Schema>(
-                    ["hashfront-Unit", "hashfront-Building"],
-                    [gameIdHex],
-                    "VariableLen",
-                  ).build(),
-                ],
-              },
-            })
+            .withClause(
+              KeysClause<Schema>(
+                ["hashfront-Game", "hashfront-PlayerState"],
+                [gameIdHex],
+                "VariableLen",
+              ).build(),
+            )
             .withLimit(1000)
             .includeHashedKeys(),
           callback: (response) => {
-            if (response.error) {
-              console.error("Entity subscription error:", response.error);
-              return;
-            }
-            if (response.data) {
-              processEntityUpdates(response.data, gameIdNum);
-            }
+            if (response.data) processEntityUpdates(response.data, gameIdNum);
+          },
+          fetchInitialData: true,
+        });
+
+        // Subscription 2: Targets models with compound keys starting with game_id.
+        const [initialData2, sub2] = await sdk!.subscribeEntityQuery({
+          query: new ToriiQueryBuilder<Schema>()
+            .withClause(
+              KeysClause<Schema>(
+                ["hashfront-Unit", "hashfront-Building"],
+                [gameIdHex],
+                "VariableLen",
+              ).build(),
+            )
+            .withLimit(1000)
+            .includeHashedKeys(),
+          callback: (response) => {
+            if (response.data) processEntityUpdates(response.data, gameIdNum);
           },
           fetchInitialData: true,
         });
 
         if (!active) {
-          subscription.free();
+          sub1.free();
+          sub2.free();
           return;
         }
 
-        subscriptionRef.current = subscription;
+        subscriptionRef.current = {
+          free: () => {
+            sub1.free();
+            sub2.free();
+          },
+        };
 
-        // Process initial entity data
-        processEntityUpdates(initialData.getItems(), gameIdNum);
+        // Audit initial data sync
+        const totalInitial =
+          initialData1.getItems().length + initialData2.getItems().length;
+        console.log(
+          `[Torii] Subscribed. Initial sync: ${totalInitial} entities.`,
+        );
+
+        processEntityUpdates(initialData1.getItems(), gameIdNum);
+        processEntityUpdates(initialData2.getItems(), gameIdNum);
 
         // Get map_id from the game state we just set
         const gameInfo = useGameStore.getState().game;
@@ -334,9 +363,10 @@ export function useGameState(id: string | undefined): {
           if (!active) return;
 
           // Also get building entities for tile overlay (already in initial data)
-          const buildingEntities = initialData
-            .getItems()
-            .filter((e) => e.models?.hashfront?.Building);
+          const buildingEntities = [
+            ...initialData1.getItems(),
+            ...initialData2.getItems(),
+          ].filter((e) => e.models?.hashfront?.Building);
 
           const tileMap = buildTileMap(tileResult.getItems(), buildingEntities);
 
