@@ -85,6 +85,11 @@ if [[ ${#MAPS[@]} -eq 0 ]]; then
     scattered
     valley
     terrain
+    ridgeline
+    archipelago
+    ambush
+    cliffside
+    no_mans_land
   )
 fi
 

@@ -1,0 +1,16 @@
+# P1 — spread behind northern fortifications
+Infantry 1 9 0
+Infantry 1 11 0
+Infantry 1 8 1
+Infantry 1 12 1
+Ranger 1 6 1
+Ranger 1 14 1
+Tank 1 10 1
+# P2 — spread behind southern wall
+Infantry 2 9 19
+Infantry 2 11 19
+Infantry 2 8 18
+Infantry 2 12 18
+Ranger 2 6 18
+Ranger 2 14 18
+Tank 2 10 18
