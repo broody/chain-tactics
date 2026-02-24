@@ -157,9 +157,29 @@ def _plan_unit(unit, unit_pos, enemies, enemy_hq, game_state, occupied, already_
         occupied.discard(unit_pos)
         occupied.add(new_pos)
 
-    # Ensure unit ends with wait if not already
+    # Ensure unit ends with wait — UNLESS it might die from counterattack
     if actions and not isinstance(actions[-1], WaitAction):
-        actions.append(WaitAction(unit.unit_id))
+        # Check if last action is an attack where we might die from counter
+        might_die = False
+        if any(isinstance(a, AttackAction) for a in actions):
+            for a in actions:
+                if isinstance(a, AttackAction):
+                    target = next((e for e in game_state.units if e.unit_id == a.target_id), None)
+                    if target and target.is_alive:
+                        # Estimate counter damage to us
+                        # Melee units counter if adjacent; rangers counter at range 2-3
+                        from config import ATTACK_RANGE
+                        t_range = ATTACK_RANGE.get(target.unit_type, 1)
+                        our_terrain = game_state.grid[new_pos[1]][new_pos[0]]
+                        our_def = TERRAIN_DEFENSE.get(our_terrain, 0)
+                        counter_dmg = max(UNIT_ATK.get(target.unit_type, 0) - our_def, 1)
+                        prior_dmg = already_targeted.get(a.target_id, 0)
+                        target_alive_after = target.hp - prior_dmg > 0
+                        if target_alive_after and unit.hp <= counter_dmg:
+                            might_die = True
+
+        if not might_die:
+            actions.append(WaitAction(unit.unit_id))
 
     return actions
 
