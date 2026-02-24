@@ -4,6 +4,7 @@ import { TEAMS, UNIT_TYPES } from "../data/gameStore";
 
 export interface GameHistoryEvent {
   id: string;
+  transactionHash?: string;
   type: string;
   timestamp: string;
   message: string;
@@ -67,6 +68,10 @@ export function useGameHistory(gameId: number | undefined) {
         const data = JSON.parse(row.data);
         let message = "";
 
+        // event_id format: block_hash:transaction_hash:world_address:event_index
+        const parts = row.event_id.split(":");
+        const transactionHash = parts.length > 1 ? parts[1] : undefined;
+
         switch (row.model_name) {
           case "UnitMoved":
             message = `${getUnitName(data.unit_id)} moved to (${data.x}, ${data.y})`;
@@ -108,6 +113,7 @@ export function useGameHistory(gameId: number | undefined) {
 
         return {
           id: row.event_id,
+          transactionHash,
           type: row.model_name,
           timestamp: row.executed_at,
           message,

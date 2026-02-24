@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useExplorer } from "@starknet-react/core";
 import { PixelPanel } from "./PixelPanel";
 import { useGameStore } from "../data/gameStore";
 import { useGameHistory } from "../hooks/useGameHistory";
 
 export default function HistoryHUD() {
   const [isOpen, setIsOpen] = useState(false);
+  const explorer = useExplorer();
   const game = useGameStore((s) => s.game);
   const { events } = useGameHistory(game?.gameId);
 
@@ -24,8 +26,17 @@ export default function HistoryHUD() {
 
         {!isOpen ? (
           <div
-            className="mt-2 cursor-pointer hover:bg-white/5 p-1 transition-colors"
-            onClick={() => setIsOpen(true)}
+            className="mt-2 cursor-pointer hover:bg-white/5 p-1 transition-colors group"
+            onClick={() => {
+              if (latestEvent?.transactionHash) {
+                window.open(
+                  explorer.transaction(latestEvent.transactionHash),
+                  "_blank",
+                );
+              } else {
+                setIsOpen(true);
+              }
+            }}
           >
             {latestEvent ? (
               <div className="text-sm flex items-center gap-2 overflow-hidden whitespace-nowrap">
@@ -36,9 +47,14 @@ export default function HistoryHUD() {
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="text-white/90 uppercase font-mono truncate font-bold">
+                <span className="text-white/90 uppercase font-mono truncate font-bold group-hover:text-blue-400 transition-colors">
                   {latestEvent.message}
                 </span>
+                {latestEvent.transactionHash && (
+                  <span className="text-[10px] text-blue-400/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                    [VIEW_TX]
+                  </span>
+                )}
               </div>
             ) : (
               <div className="text-sm text-white/40 uppercase tracking-widest text-center font-bold">
@@ -58,19 +74,38 @@ export default function HistoryHUD() {
                   .map((event) => (
                     <div
                       key={event.id}
-                      className="text-base flex flex-col gap-1 border-l-4 border-white/10 pl-4 py-2"
+                      className={`text-base flex flex-col gap-1 border-l-4 border-white/10 pl-4 py-2 transition-colors ${
+                        event.transactionHash
+                          ? "cursor-pointer hover:bg-white/5 hover:border-blue-500 group"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        if (event.transactionHash) {
+                          window.open(
+                            explorer.transaction(event.transactionHash),
+                            "_blank",
+                          );
+                        }
+                      }}
                     >
-                      <div className="text-white/95 leading-relaxed uppercase font-mono font-bold">
+                      <div className="text-white/95 leading-relaxed uppercase font-mono font-bold group-hover:text-blue-400 transition-colors">
                         {event.message}
                       </div>
-                      <div className="opacity-40 text-[10px] font-bold font-mono">
-                        T+
-                        {new Date(event.timestamp).toLocaleTimeString([], {
-                          hour12: false,
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
+                      <div className="flex justify-between items-center">
+                        <div className="opacity-40 text-[10px] font-bold font-mono">
+                          T+
+                          {new Date(event.timestamp).toLocaleTimeString([], {
+                            hour12: false,
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </div>
+                        {event.transactionHash && (
+                          <div className="text-[10px] text-blue-400/50 uppercase font-bold tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+                            STARKNET_EXPLORER ↗
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
