@@ -1,0 +1,16 @@
+# P1 — NW corner
+Infantry 1 1 1
+Infantry 1 2 2
+Infantry 1 0 2
+Infantry 1 1 3
+Ranger 1 3 0
+Ranger 1 0 4
+Tank 1 2 1
+# P2 — SE corner
+Infantry 2 18 18
+Infantry 2 17 17
+Infantry 2 19 17
+Infantry 2 18 16
+Ranger 2 16 19
+Ranger 2 19 15
+Tank 2 17 18

@@ -1,0 +1,16 @@
+# P1 — NW spread
+Infantry 1 0 0
+Infantry 1 2 0
+Infantry 1 0 1
+Infantry 1 2 1
+Ranger 1 1 2
+Ranger 1 3 1
+Tank 1 1 1
+# P2 — SE spread
+Infantry 2 19 19
+Infantry 2 17 19
+Infantry 2 19 18
+Infantry 2 17 18
+Ranger 2 18 17
+Ranger 2 16 18
+Tank 2 18 18
