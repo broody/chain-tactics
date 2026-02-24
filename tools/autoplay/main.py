@@ -308,7 +308,10 @@ class Manager:
                     self.game_threads[game.game_id] = gt
                     log.info(f"⚔️ Human game {game.game_id} ({game.name}) — bot is P{bot_pid}")
             elif self.selfplay:
-                # Self-play game — adopt it
+                # Self-play game — only adopt if under limit
+                selfplay_count = sum(1 for gt in self.game_threads.values() if not gt.only_player)
+                if selfplay_count >= self.max_games:
+                    continue
                 gt = GameThread(game.game_id, self.tx_queue, only_player=0)
                 gt.start()
                 self.game_threads[game.game_id] = gt
