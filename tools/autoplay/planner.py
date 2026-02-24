@@ -35,10 +35,6 @@ class CaptureAction:
     unit_id: int
 
 @dataclass
-class WaitAction:
-    unit_id: int
-
-@dataclass
 class EndTurnAction:
     pass
 
@@ -287,7 +283,6 @@ def _plan_flanker(unit, unit_pos, enemy_hq, enemies, game_state, occupied, dange
     actions = []
 
     if not enemy_hq:
-        actions.append(WaitAction(unit.unit_id))
         return actions, unit_pos
 
     # On HQ? Capture!
@@ -327,11 +322,9 @@ def _plan_flanker(unit, unit_pos, enemy_hq, enemies, game_state, occupied, dange
             log.info(f"  🏴 Flanker #{unit.unit_id} reaches HQ {unit_pos}->{new_pos}, capturing!")
         else:
             log.info(f"  🏴 Flanker #{unit.unit_id} sprints {unit_pos}->{new_pos} toward HQ")
-        actions.append(WaitAction(unit.unit_id))
         return actions, new_pos
 
     log.info(f"  🏴 Flanker #{unit.unit_id} stuck at {unit_pos}")
-    actions.append(WaitAction(unit.unit_id))
     return actions, unit_pos
 
 
@@ -364,7 +357,6 @@ def _plan_retreat(unit, unit_pos, enemies, danger_map, game_state, occupied, my_
     else:
         log.info(f"  🚑 #{unit.unit_id} holds (nowhere safer, hp={unit.hp})")
 
-    actions.append(WaitAction(unit.unit_id))
     return actions, best_tile
 
 
@@ -400,7 +392,6 @@ def _plan_screener(unit, unit_pos, enemies, my_units, game_state, occupied,
         actions.append(AttackAction(unit.unit_id, target.unit_id))
         _record_attack(unit, target, game_state, already_targeted)
         log.info(f"  🛡️ Screen #{unit.unit_id} attacks #{target.unit_id}")
-        _append_wait_if_safe(actions, unit, unit_pos, target, game_state, already_targeted)
         return actions, unit_pos
 
     # Find our rangers to protect
@@ -432,11 +423,9 @@ def _plan_screener(unit, unit_pos, enemies, my_units, game_state, occupied,
             log.info(f"  🛡️ Screen #{unit.unit_id} intercepts {unit_pos}->{new_pos}, attacks #{target.unit_id}")
         else:
             log.info(f"  🛡️ Screen #{unit.unit_id} positions {unit_pos}->{new_pos}")
-        _append_wait_if_safe(actions, unit, new_pos, target, game_state, already_targeted)
         return actions, new_pos
 
     log.info(f"  🛡️ Screen #{unit.unit_id} holds at {unit_pos}")
-    actions.append(WaitAction(unit.unit_id))
     return actions, unit_pos
 
 
@@ -466,7 +455,6 @@ def _plan_ranger(unit, unit_pos, enemies, focus_order, game_state,
         actions.append(AttackAction(unit.unit_id, target.unit_id))
         _record_attack(unit, target, game_state, already_targeted)
         log.info(f"  🎯 Ranger #{unit.unit_id} snipes #{target.unit_id} from {unit_pos}")
-        _append_wait_if_safe(actions, unit, new_pos, target, game_state, already_targeted)
         return actions, new_pos
 
     # Reposition: find best sniping tile
@@ -515,7 +503,6 @@ def _plan_ranger(unit, unit_pos, enemies, focus_order, game_state,
         else:
             log.info(f"  🎯 Ranger #{unit.unit_id} stuck at {unit_pos}")
 
-    _append_wait_if_safe(actions, unit, new_pos, None, game_state, already_targeted)
     return actions, new_pos
 
 
@@ -534,7 +521,6 @@ def _plan_melee(unit, unit_pos, enemies, focus_order, game_state,
         actions.append(AttackAction(unit.unit_id, target.unit_id))
         _record_attack(unit, target, game_state, already_targeted)
         log.info(f"  ⚔️ {unit.unit_type} #{unit.unit_id} attacks #{target.unit_id} at {unit_pos}")
-        _append_wait_if_safe(actions, unit, new_pos, target, game_state, already_targeted)
         return actions, new_pos
 
     # Turtle: don't advance if we're on good terrain and aggression is low
@@ -543,7 +529,6 @@ def _plan_melee(unit, unit_pos, enemies, focus_order, game_state,
         defense = TERRAIN_DEFENSE.get(terrain, 0)
         if defense >= 1:
             log.info(f"  🐢 {unit.unit_type} #{unit.unit_id} holds {unit_pos} (def={defense}, turtle)")
-            actions.append(WaitAction(unit.unit_id))
             return actions, unit_pos
 
     # Advance toward focus target
@@ -575,7 +560,6 @@ def _plan_melee(unit, unit_pos, enemies, focus_order, game_state,
         else:
             log.info(f"  ⚔️ {unit.unit_type} #{unit.unit_id} stuck at {unit_pos}")
 
-    _append_wait_if_safe(actions, unit, new_pos, None, game_state, already_targeted)
     return actions, new_pos
 
 
@@ -640,24 +624,6 @@ def _record_attack(unit, target, game_state, already_targeted):
     dmg = max(UNIT_ATK[unit.unit_type] - defense, 1)
     already_targeted[target.unit_id] = already_targeted.get(target.unit_id, 0) + dmg
 
-
-def _append_wait_if_safe(actions, unit, pos, last_target, game_state, already_targeted):
-    """Add WaitAction unless counterattack would kill us."""
-    if not actions:
-        actions.append(WaitAction(unit.unit_id))
-        return
-
-    if last_target and last_target.is_alive:
-        prior_dmg = already_targeted.get(last_target.unit_id, 0)
-        target_alive_after = last_target.hp - prior_dmg > 0
-        if target_alive_after:
-            our_terrain = game_state.grid[pos[1]][pos[0]]
-            our_def = TERRAIN_DEFENSE.get(our_terrain, 0)
-            counter_dmg = max(UNIT_ATK.get(last_target.unit_type, 0) - our_def, 1)
-            if unit.hp <= counter_dmg:
-                return
-
-    actions.append(WaitAction(unit.unit_id))
 
 
 def _plan_capture_march(unit, unit_pos, enemy_hq, game_state, occupied):
