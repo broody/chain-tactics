@@ -32,6 +32,7 @@ interface GameModelNode {
   next_unit_id: string | number;
   is_test_mode: boolean;
   winner?: string | number | null;
+  winner_address?: string;
   player_address?: string;
 }
 
@@ -259,6 +260,9 @@ export default function Lobby() {
   const [currentFilter, setCurrentFilter] = useState<LobbyFilter>("NONE");
   const [games, setGames] = useState<GameModelNode[]>([]);
   const [gamesLoading, setGamesLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 20;
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [mapInfos, setMapInfos] = useState<MapInfoNode[]>([]);
   const [mapsLoading, setMapsLoading] = useState(false);
@@ -280,12 +284,47 @@ export default function Lobby() {
   const [joiningGameId, setJoiningGameId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const gamesListRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [statsInProgress, setStatsInProgress] = useState<number | null>(null);
   const [statsCompleted, setStatsCompleted] = useState<number | null>(null);
   const [statsTransactions, setStatsTransactions] = useState<number | null>(
     null,
   );
   const [tps, setTps] = useState<number | null>(null);
+  const [winnerUsernames, setWinnerUsernames] = useState<
+    Record<string, string>
+  >({});
+
+  useEffect(() => {
+    const finishedWithWinners = games.filter(
+      (g) => parseGameState(g.state) === "Finished" && g.winner_address,
+    );
+    if (finishedWithWinners.length === 0) return;
+
+    let active = true;
+    async function loadWinnerUsernames() {
+      try {
+        const addresses = finishedWithWinners
+          .map((g) => g.winner_address!)
+          .filter(Boolean);
+        const addressMap = await lookupAddresses(addresses);
+        if (!active) return;
+
+        const lookup: Record<string, string> = {};
+        for (const [addr, uname] of addressMap.entries()) {
+          const norm = normalizeAddressHex(addr);
+          if (norm) lookup[norm] = uname;
+        }
+        setWinnerUsernames((prev) => ({ ...prev, ...lookup }));
+      } catch (e) {
+        console.error("Failed to lookup winner usernames:", e);
+      }
+    }
+    void loadWinnerUsernames();
+    return () => {
+      active = false;
+    };
+  }, [games]);
 
   useEffect(() => {
     if (controllerReady) return;
@@ -543,6 +582,7 @@ export default function Lobby() {
       filter: LobbyFilter,
       userAddress: string | undefined,
       currentSearch: string,
+      offset: number,
       active: { current: boolean },
     ) => {
       // If we're still determining the account status, don't trigger a fetch yet
@@ -550,7 +590,11 @@ export default function Lobby() {
         return;
       }
 
-      setGamesLoading(true);
+      if (offset === 0) {
+        setGamesLoading(true);
+      } else {
+        setIsFetchingMore(true);
+      }
 
       try {
         let query = "";
@@ -560,10 +604,13 @@ export default function Lobby() {
           : "";
 
         const baseQuery = `
-          SELECT g.*, ps.address as player_address
+          SELECT g.*, ps.address as player_address, w.address as winner_address
           FROM "hashfront-Game" g
           LEFT JOIN "hashfront-PlayerState" ps ON g.game_id = ps.game_id AND LOWER(ps.address) = LOWER('${normalizedAddress || "0x0"}')
+          LEFT JOIN "hashfront-PlayerState" w ON g.game_id = w.game_id AND g.winner = w.player_id
         `;
+
+        const limitClause = `LIMIT ${PAGE_SIZE} OFFSET ${offset}`;
 
         switch (filter) {
           case "NONE":
@@ -571,12 +618,15 @@ export default function Lobby() {
             ${baseQuery}
             ${searchFilter ? `WHERE g.name LIKE '%${currentSearch.trim().replace(/'/g, "''")}%'` : ""}
             ORDER BY g.game_id DESC
-            LIMIT 100
+            ${limitClause}
           `;
             break;
           case "MY_OPS":
             if (!normalizedAddress) {
-              if (active.current) setGames([]);
+              if (active.current) {
+                setGames([]);
+                setHasMore(false);
+              }
               setGamesLoading(false);
               return;
             }
@@ -585,7 +635,7 @@ export default function Lobby() {
             JOIN "hashfront-PlayerState" ps ON g.game_id = ps.game_id
             WHERE LOWER(ps.address) = LOWER('${normalizedAddress}') ${searchFilter}
             ORDER BY g.game_id DESC
-            LIMIT 100
+            ${limitClause}
           `;
             break;
           case "JOINABLE":
@@ -593,7 +643,7 @@ export default function Lobby() {
             ${baseQuery}
             WHERE LOWER(g.state) = 'lobby' AND g.num_players < g.player_count ${searchFilter}
             ORDER BY g.game_id DESC
-            LIMIT 100
+            ${limitClause}
           `;
             break;
           case "IN_PROGRESS":
@@ -601,7 +651,7 @@ export default function Lobby() {
             ${baseQuery}
             WHERE LOWER(g.state) = 'playing' ${searchFilter}
             ORDER BY g.game_id DESC
-            LIMIT 100
+            ${limitClause}
           `;
             break;
           case "COMPLETED":
@@ -609,14 +659,19 @@ export default function Lobby() {
             ${baseQuery}
             WHERE LOWER(g.state) = 'finished' ${searchFilter}
             ORDER BY g.game_id DESC
-            LIMIT 100
+            ${limitClause}
           `;
             break;
         }
 
         const rows = await fetchToriiSql<GameModelNode>(query);
         if (active.current) {
-          setGames(rows);
+          if (offset === 0) {
+            setGames(rows);
+          } else {
+            setGames((prev) => [...prev, ...rows]);
+          }
+          setHasMore(rows.length === PAGE_SIZE);
         }
       } catch (error) {
         console.error("Failed to load games via SQL:", error);
@@ -626,28 +681,69 @@ export default function Lobby() {
       } finally {
         if (active.current) {
           setGamesLoading(false);
+          setIsFetchingMore(false);
         }
       }
     },
-    [toast, status],
+    [toast, status, PAGE_SIZE],
   );
+
+  useEffect(() => {
+    if (!hasMore || gamesLoading || isFetchingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          const active = { current: true };
+          void loadGames(
+            currentFilter,
+            address,
+            searchQuery,
+            games.length,
+            active,
+          );
+        }
+      },
+      { threshold: 0.1, root: gamesListRef.current },
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [
+    hasMore,
+    gamesLoading,
+    isFetchingMore,
+    games.length,
+    currentFilter,
+    address,
+    searchQuery,
+    loadGames,
+  ]);
 
   // Handle Search: Debounced
   useEffect(() => {
     const active = { current: true };
     const timer = setTimeout(() => {
-      void loadGames(currentFilter, address, searchQuery, active);
+      void loadGames(currentFilter, address, searchQuery, 0, active);
     }, 300);
     return () => {
       active.current = false;
       clearTimeout(timer);
     };
-  }, [searchQuery, loadGames, currentFilter]);
+  }, [searchQuery, loadGames, currentFilter, address]);
 
   // Handle Tab/Address Change: Immediate
   useEffect(() => {
     const active = { current: true };
-    void loadGames(currentFilter, address, searchQuery, active);
+    void loadGames(currentFilter, address, searchQuery, 0, active);
     return () => {
       active.current = false;
     };
@@ -1041,7 +1137,7 @@ export default function Lobby() {
                             {toNumber(game.player_count)}
                           </span>
                         </div>
-                        <div className="col-span-2 mt-1">
+                        <div className="mt-1">
                           MAP:{" "}
                           <span className="text-white">
                             {(() => {
@@ -1057,6 +1153,22 @@ export default function Lobby() {
                           </span>
                           {isPlaying && ` // ROUND: ${toNumber(game.round)}`}
                         </div>
+                        {isFinished && game.winner_address && (
+                          <div className="mt-1 text-green-400">
+                            WINNER:{" "}
+                            <span className="text-white">
+                              {(() => {
+                                const norm = normalizeAddressHex(
+                                  game.winner_address,
+                                );
+                                return (
+                                  (norm && winnerUsernames[norm]) ||
+                                  `${game.winner_address.slice(0, 6)}...${game.winner_address.slice(-4)}`
+                                );
+                              })()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col gap-2">
@@ -1099,6 +1211,17 @@ export default function Lobby() {
                   </div>
                 );
               })
+            )}
+
+            {hasMore && (
+              <div
+                ref={loadMoreRef}
+                className="py-10 flex flex-col items-center justify-center"
+              >
+                <div className="text-xs font-mono animate-pulse tracking-widest opacity-50 uppercase">
+                  &gt; RETRIEVING_ADDITIONAL_SECTORS...
+                </div>
+              </div>
             )}
           </div>
 
