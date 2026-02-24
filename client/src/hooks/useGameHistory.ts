@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { fetchToriiSql } from "../utils/toriiSql";
-import { useGameStore, TEAMS, UNIT_TYPES } from "../data/gameStore";
+import { TEAMS, UNIT_TYPES } from "../data/gameStore";
 
 export interface GameHistoryEvent {
   id: string;

@@ -252,22 +252,6 @@ export default function HUD() {
     };
   }, [players]);
 
-  const currentTurnPlayer = useMemo(() => {
-    if (currentPlayer === null) return null;
-    const player = players.find((p) => p.playerId === currentPlayer);
-    if (!player) return null;
-    const team = TEAMS[currentPlayer] ?? "blue";
-    const color = PLAYER_COLORS[team] ?? "#ffffff";
-    const name = playerUsernames[player.address];
-    return {
-      playerId: currentPlayer,
-      team,
-      color,
-      name,
-      address: player.address,
-    };
-  }, [currentPlayer, players, playerUsernames]);
-
   async function handleEndTurn() {
     if (!address) {
       connect({ connector: controllerConnector });
@@ -533,19 +517,35 @@ export default function HUD() {
       <div className="absolute top-24 right-8 z-10">
         <PixelPanel title="COMMAND_STATUS" className="!p-4 min-w-[200px]">
           <div className="flex flex-col gap-2 mt-2 text-sm uppercase tracking-widest">
-            <div className="border-b border-white/10 pb-2 mb-1">
+            <div className="border-b border-white/10 pb-2 mb-1 flex flex-col gap-1">
               <span className="text-white/40 text-[10px] block mb-1">
-                CURRENT_TURN
+                PLAYERS
               </span>
-              {currentTurnPlayer ? (
-                <span
-                  className="font-bold text-base"
-                  style={{ color: currentTurnPlayer.color }}
-                >
-                  {currentTurnPlayer.name ??
-                    `${currentTurnPlayer.address.slice(0, 6)}...${currentTurnPlayer.address.slice(-4)}`}
-                </span>
-              ) : (
+              {players.map((p) => {
+                const team = TEAMS[p.playerId] ?? "blue";
+                const color = PLAYER_COLORS[team] ?? "#ffffff";
+                const name =
+                  playerUsernames[p.address] ??
+                  `${p.address.slice(0, 6)}...${p.address.slice(-4)}`;
+                const isTurn = p.playerId === currentPlayer;
+                return (
+                  <div key={p.playerId} className="flex items-center gap-2">
+                    <span
+                      className="text-[10px] w-3"
+                      style={{ color: isTurn ? color : "transparent" }}
+                    >
+                      {isTurn ? "▶" : ""}
+                    </span>
+                    <span
+                      className={`text-sm ${isTurn ? "font-bold" : "font-normal opacity-50"}`}
+                      style={{ color }}
+                    >
+                      {name}
+                    </span>
+                  </div>
+                );
+              })}
+              {players.length === 0 && (
                 <span className="font-bold text-base">UNKNOWN</span>
               )}
             </div>

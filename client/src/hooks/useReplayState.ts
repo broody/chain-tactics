@@ -329,8 +329,8 @@ function buildSnapshots(
         const currentUnitState = workingUnits.map((u) => ({ ...u }));
         const unitsChanged =
           currentUnitState.length !== lastSnap.units.length ||
-          currentUnitState.some((u, i) => {
-            const prev = lastSnap.units[i];
+          currentUnitState.some((u, index) => {
+            const prev = lastSnap.units[index];
             return (
               !prev ||
               u.onchainId !== prev.onchainId ||
@@ -526,7 +526,7 @@ export function useReplayState(id: string | undefined): {
         if (snaps.length >= 2) {
           const s0 = snaps[0].units;
           const s1 = snaps[1].units;
-          const posChanged = s0.some((u, i) => {
+          const posChanged = s0.some((u) => {
             const u1 = s1.find((x) => x.onchainId === u.onchainId);
             return u1 && (u.x !== u1.x || u.y !== u1.y);
           });

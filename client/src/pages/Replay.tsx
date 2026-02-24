@@ -68,7 +68,7 @@ export default function Replay() {
           <svg width="80" height="80" viewBox="0 0 40 40">
             <g
               transform="skewX(-15) skewY(5) scale(0.9)"
-              transformOrigin="center"
+              style={{ transformOrigin: "center" }}
             >
               <g stroke="white" fill="none" strokeWidth="2">
                 <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />

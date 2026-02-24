@@ -76,19 +76,6 @@ function processEntityUpdates(
     const models = entity.models?.hashfront;
     if (!models) continue;
 
-    // For compound keys (Unit, Building), the first key is the game_id.
-    // We use BigInt for comparison to handle hex vs decimal safely.
-    const entityGameIdBI =
-      entity.keys && entity.keys.length > 0 ? toBigInt(entity.keys[0]) : null;
-
-    if (entityGameIdBI !== null && entityGameIdBI !== currentIdBI) {
-      console.warn(
-        `[Torii] KEY CROSS-TALK: Rejected entity with Key[0] ${entityGameIdBI} (Expected: ${currentIdBI})`,
-        entity,
-      );
-      continue;
-    }
-
     if (models.Game) {
       const g = models.Game;
       if (toBigInt(g.game_id) !== currentIdBI) {
@@ -295,6 +282,10 @@ export function useGameState(id: string | undefined): {
             .withLimit(1000)
             .includeHashedKeys(),
           callback: (response) => {
+            if (!active) {
+              sub1.free();
+              return;
+            }
             if (response.data) processEntityUpdates(response.data, gameIdNum);
           },
           fetchInitialData: true,
@@ -313,6 +304,10 @@ export function useGameState(id: string | undefined): {
             .withLimit(1000)
             .includeHashedKeys(),
           callback: (response) => {
+            if (!active) {
+              sub2.free();
+              return;
+            }
             if (response.data) processEntityUpdates(response.data, gameIdNum);
           },
           fetchInitialData: true,
@@ -326,6 +321,7 @@ export function useGameState(id: string | undefined): {
 
         subscriptionRef.current = {
           free: () => {
+            console.log(`[Torii] Terminating subscriptions for Sector ${id}`);
             sub1.free();
             sub2.free();
           },
@@ -396,6 +392,7 @@ export function useGameState(id: string | undefined): {
     load();
 
     return () => {
+      console.log(`[Torii] Cleaning up state for Sector ${id}`);
       active = false;
       subscriptionRef.current?.free();
       subscriptionRef.current = null;

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useGameStore, TEAMS, UNIT_MAX_HP } from "../data/gameStore";
+import { useGameStore, UNIT_MAX_HP } from "../data/gameStore";
 import { PixelPanel } from "./PixelPanel";
 import { GRID_SIZE, TileType } from "../game/types";
 import type { useReplayController } from "../hooks/useReplayController";
@@ -141,7 +141,7 @@ export default function ReplayHUD({ controller, gameId }: ReplayHUDProps) {
               <svg width="40" height="40" viewBox="0 0 40 40">
                 <g
                   transform="skewX(-15) skewY(5) scale(0.9)"
-                  transformOrigin="center"
+                  style={{ transformOrigin: "center" }}
                 >
                   <g stroke="white" fill="none" strokeWidth="2">
                     <path d="M15 6 V34 M25 6 V34 M6 15 H34 M6 25 H34" />
