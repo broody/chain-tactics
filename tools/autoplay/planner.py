@@ -486,14 +486,8 @@ def _plan_ranger(unit, unit_pos, enemies, focus_order, game_state,
         tile, path = best_tile
         actions.append(MoveAction(unit.unit_id, path))
         new_pos = tile
-
-        target = _pick_focus_target_in_range(unit, new_pos, focus_order, game_state, already_targeted, strat)
-        if target:
-            actions.append(AttackAction(unit.unit_id, target.unit_id))
-            _record_attack(unit, target, game_state, already_targeted)
-            log.info(f"  🎯 Ranger #{unit.unit_id} repositions {unit_pos}->{new_pos}, snipes #{target.unit_id}")
-        else:
-            log.info(f"  🎯 Ranger #{unit.unit_id} kites {unit_pos}->{new_pos}")
+        # Rangers can NOT attack after moving — just reposition
+        log.info(f"  🎯 Ranger #{unit.unit_id} kites {unit_pos}->{new_pos}")
     else:
         path = best_move_toward(game_state.grid, unit_pos, primary_pos, unit.unit_type, occ)
         if path:
