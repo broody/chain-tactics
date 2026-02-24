@@ -300,13 +300,19 @@ class Manager:
         # Ensure open game exists for humans
         self._ensure_open_game()
 
-        # Create self-play games if under limit
+        # Create self-play games if under limit AND total active games < 10
         if self.selfplay:
+            active_games = fetch_active_games()
+            total_active = len(active_games)
             selfplay_count = sum(1 for gt in self.game_threads.values() if not gt.only_player)
-            while selfplay_count < self.max_games:
-                if not self._create_selfplay_game():
-                    break
-                selfplay_count += 1
+            if total_active >= 10:
+                log.debug(f"Skipping game creation: {total_active} active games (cap=10)")
+            else:
+                while selfplay_count < self.max_games and total_active < 10:
+                    if not self._create_selfplay_game():
+                        break
+                    selfplay_count += 1
+                    total_active += 1
 
         self._log_stats()
 
