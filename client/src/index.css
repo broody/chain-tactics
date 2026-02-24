@@ -230,6 +230,20 @@ a {
   color: inherit;
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 @layer components {
   .blueprint-btn {
     @apply relative inline-block px-4 py-2 text-sm uppercase transition-all duration-150 text-center cursor-pointer select-none font-bold;

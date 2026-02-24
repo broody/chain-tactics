@@ -46,6 +46,15 @@ function parseBuildingType(value: string | number): number {
   return BUILDING_TYPE_MAP[value] ?? 0;
 }
 
+function toBigInt(value: any): bigint {
+  try {
+    if (value === null || value === undefined) return 0n;
+    return BigInt(value);
+  } catch {
+    return 0n;
+  }
+}
+
 function toNumber(value: string | number | null | undefined): number {
   if (typeof value === "number") return value;
   if (typeof value === "string") {
@@ -56,16 +65,34 @@ function toNumber(value: string | number | null | undefined): number {
 }
 
 /** Process subscription entity updates into the game store */
-function processEntityUpdates(entities: StandardizedQueryResult<Schema>) {
+function processEntityUpdates(
+  entities: StandardizedQueryResult<Schema>,
+  currentGameId: number,
+) {
   const store = useGameStore.getState();
+  const currentIdBI = BigInt(currentGameId);
 
   for (const entity of entities) {
     const models = entity.models?.hashfront;
     if (!models) continue;
 
+    // For compound keys (Unit, Building), the first key is the game_id.
+    // We use BigInt for comparison to handle hex vs decimal safely.
+    const entityGameIdBI =
+      entity.keys && entity.keys.length > 0 ? toBigInt(entity.keys[0]) : null;
+
+    if (entityGameIdBI !== null && entityGameIdBI !== currentIdBI) {
+      continue;
+    }
+
     if (models.Game) {
       const g = models.Game;
+      if (toBigInt(g.game_id) !== currentIdBI) {
+        continue;
+      }
+
       store.setGame({
+        gameId: currentGameId,
         currentPlayer: toNumber(g.current_player),
         round: toNumber(g.round),
         winner: toNumber(g.winner),
@@ -81,6 +108,10 @@ function processEntityUpdates(entities: StandardizedQueryResult<Schema>) {
 
     if (models.Unit) {
       const u = models.Unit;
+      if (toBigInt(u.game_id) !== currentIdBI) {
+        continue;
+      }
+
       const unitId = toNumber(u.unit_id);
       const playerId = toNumber(u.player_id);
       const isAlive = Boolean(u.is_alive);
@@ -116,6 +147,10 @@ function processEntityUpdates(entities: StandardizedQueryResult<Schema>) {
 
     if (models.PlayerState) {
       const p = models.PlayerState;
+      if (toBigInt(p.game_id) !== currentIdBI) {
+        continue;
+      }
+
       const playerId = toNumber(p.player_id);
       const newPlayer: GamePlayerState = {
         playerId,
@@ -225,24 +260,34 @@ export function useGameState(id: string | undefined): {
       try {
         const store = useGameStore.getState();
         store.clearUnits();
+        store.setGame(null);
+        store.setPlayers([]);
 
-        // Subscribe to game entities (Game, Unit, Building, PlayerState)
-        // with initial hydration — this both fetches current state AND
-        // starts the gRPC subscription for real-time updates.
+        // Pad hex to 8 chars (u32) to ensure precise matching in Torii
+        const gameIdHex = `0x${gameIdNum.toString(16).padStart(8, "0")}`;
+
+        // Subscribe to game entities with split clauses for better precision.
+        // FixedLen for models with ONLY game_id as key.
+        // VariableLen for models where game_id is just the prefix (Unit, Building).
         const [initialData, subscription] = await sdk!.subscribeEntityQuery({
           query: new ToriiQueryBuilder<Schema>()
-            .withClause(
-              KeysClause<Schema>(
-                [
-                  "hashfront-Game",
-                  "hashfront-Unit",
-                  "hashfront-Building",
-                  "hashfront-PlayerState",
+            .withClause({
+              Composite: {
+                operator: "Or",
+                clauses: [
+                  KeysClause<Schema>(
+                    ["hashfront-Game", "hashfront-PlayerState"],
+                    [gameIdHex],
+                    "FixedLen",
+                  ).build(),
+                  KeysClause<Schema>(
+                    ["hashfront-Unit", "hashfront-Building"],
+                    [gameIdHex],
+                    "VariableLen",
+                  ).build(),
                 ],
-                [`0x${gameIdNum.toString(16)}`],
-                "VariableLen",
-              ).build(),
-            )
+              },
+            })
             .withLimit(1000)
             .includeHashedKeys(),
           callback: (response) => {
@@ -251,7 +296,7 @@ export function useGameState(id: string | undefined): {
               return;
             }
             if (response.data) {
-              processEntityUpdates(response.data);
+              processEntityUpdates(response.data, gameIdNum);
             }
           },
           fetchInitialData: true,
@@ -265,7 +310,7 @@ export function useGameState(id: string | undefined): {
         subscriptionRef.current = subscription;
 
         // Process initial entity data
-        processEntityUpdates(initialData.getItems());
+        processEntityUpdates(initialData.getItems(), gameIdNum);
 
         // Get map_id from the game state we just set
         const gameInfo = useGameStore.getState().game;

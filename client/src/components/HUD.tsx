@@ -532,19 +532,21 @@ export default function HUD() {
 
       <div className="absolute top-24 right-8 z-10">
         <PixelPanel title="COMMAND_STATUS" className="!p-4 min-w-[200px]">
-          <div className="flex flex-col gap-2 mt-2 text-xs uppercase tracking-widest">
-            <div>
-              CURRENT TURN:{" "}
+          <div className="flex flex-col gap-2 mt-2 text-sm uppercase tracking-widest">
+            <div className="border-b border-white/10 pb-2 mb-1">
+              <span className="text-white/40 text-[10px] block mb-1">
+                CURRENT_TURN
+              </span>
               {currentTurnPlayer ? (
                 <span
-                  className="font-bold"
+                  className="font-bold text-base"
                   style={{ color: currentTurnPlayer.color }}
                 >
                   {currentTurnPlayer.name ??
                     `${currentTurnPlayer.address.slice(0, 6)}...${currentTurnPlayer.address.slice(-4)}`}
                 </span>
               ) : (
-                <span className="font-bold">UNKNOWN</span>
+                <span className="font-bold text-base">UNKNOWN</span>
               )}
             </div>
             {canEndTurn && (

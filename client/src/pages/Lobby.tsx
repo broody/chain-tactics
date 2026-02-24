@@ -1075,9 +1075,7 @@ export default function Lobby() {
                       ) : (
                         <Link
                           to={
-                            isFinished
-                              ? `/replay/${gameId}`
-                              : `/game/${gameId}`
+                            isFinished ? `/replay/${gameId}` : `/game/${gameId}`
                           }
                           className="w-full"
                         >

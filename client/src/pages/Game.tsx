@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useState, useMemo } from "react";
 import GameViewport from "../components/GameViewport";
 import HUD from "../components/HUD";
+import HistoryHUD from "../components/HistoryHUD";
 import { useGameState } from "../hooks/useGameState";
 import { ToastContainer } from "../components/Toast";
 
@@ -109,6 +110,7 @@ export default function Game() {
       <div className="haze-bloom w-full h-full relative">
         <GameViewport key={id} onLoaded={() => setViewportLoaded(true)} />
         <HUD />
+        <HistoryHUD />
       </div>
     </div>
   );

@@ -540,6 +540,7 @@ export function useReplayState(id: string | undefined): {
 
         // Hydrate the store
         const gameInfo: GameInfo = {
+          gameId: toNumber(gameRow.game_id),
           currentPlayer: snaps[0]?.currentPlayer ?? 1,
           round: snaps[0]?.round ?? 1,
           winner: toNumber(gameRow.winner),

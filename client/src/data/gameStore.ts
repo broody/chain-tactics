@@ -47,6 +47,7 @@ export interface Unit {
 
 // --- Game info ---
 export interface GameInfo {
+  gameId: number;
   currentPlayer: number;
   round: number;
   winner: number;
