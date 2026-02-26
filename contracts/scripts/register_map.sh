@@ -90,6 +90,7 @@ for (( y=0; y<HEIGHT; y++ )); do
       'R') V=5 ;;
       'T') V=6 ;;
       'D') V=7 ;;
+      'O') V=8 ;;
       *) echo "Error: unknown tile char '$CH' at ($x,$y)" >&2; exit 1 ;;
     esac
     INDEX=$(( y * WIDTH + x ))

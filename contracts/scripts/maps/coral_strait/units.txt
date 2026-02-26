@@ -1,0 +1,16 @@
+# P1 - western landmass
+Infantry 1 2 0
+Infantry 1 2 1
+Infantry 1 1 2
+Ranger 1 3 1
+Ranger 1 1 3
+Tank 1 2 2
+Tank 1 1 1
+# P2 - eastern islands
+Infantry 2 17 3
+Infantry 2 18 4
+Infantry 2 19 4
+Ranger 2 17 2
+Ranger 2 18 5
+Tank 2 18 2
+Tank 2 17 4
