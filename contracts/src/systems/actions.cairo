@@ -114,6 +114,10 @@ pub mod actions {
                 assert(building_type != BuildingType::None, 'Invalid building type');
                 assert(x < width && y < height, 'Building out of bounds');
 
+                // Cannot place buildings on ocean tiles
+                let building_tile: MapTile = world.read_model((map_id, x, y));
+                assert(building_tile.tile_type != TileType::Ocean, 'No building on ocean');
+
                 if building_type == BuildingType::HQ {
                     hq_count += 1;
                     assert(player_id >= 1, 'HQ must have owner');
@@ -144,6 +148,10 @@ pub mod actions {
                 let unit_type: UnitType = unit_type_val.into();
                 assert(unit_type != UnitType::None, 'Invalid unit type');
                 assert(x < width && y < height, 'Unit out of bounds');
+
+                // Cannot place units on ocean tiles
+                let unit_tile: MapTile = world.read_model((map_id, x, y));
+                assert(unit_tile.tile_type != TileType::Ocean, 'No unit on ocean');
 
                 world
                     .write_model(

@@ -64,6 +64,7 @@ pub fn move_cost(tile_type: TileType) -> u8 {
         TileType::Road => 1,
         TileType::Tree => 1,
         TileType::DirtRoad => 1,
+        TileType::Ocean => 1,
     }
 }
 
@@ -77,6 +78,7 @@ pub fn defense_bonus(tile_type: TileType) -> u8 {
         TileType::Road => 0,
         TileType::Tree => 1,
         TileType::DirtRoad => 0,
+        TileType::Ocean => 0,
     }
 }
 
@@ -99,6 +101,7 @@ pub fn terrain_evasion(tile_type: TileType) -> u8 {
         TileType::Factory => 8,
         TileType::HQ => 10,
         TileType::Mountain => 12,
+        TileType::Ocean => 0,
     }
 }
 
@@ -113,6 +116,7 @@ pub fn range_penalty(unit_type: UnitType, distance: u8) -> u8 {
 pub fn can_traverse(unit_type: UnitType, tile_type: TileType) -> bool {
     match tile_type {
         TileType::Mountain => unit_type == UnitType::Infantry,
+        TileType::Ocean => false, // Air units will be able to traverse once added
         _ => true,
     }
 }

@@ -7,7 +7,7 @@ pub enum GameState {
 }
 
 // Must match client TileType ordinals: Grass=0, Mountain=1, City=2, Factory=3, HQ=4, Road=5,
-// Tree=6, DirtRoad=7
+// Tree=6, DirtRoad=7, Ocean=8
 #[derive(Serde, Drop, Copy, PartialEq, Introspect, DojoStore, Default)]
 pub enum TileType {
     #[default]
@@ -19,6 +19,7 @@ pub enum TileType {
     Road,
     Tree,
     DirtRoad,
+    Ocean,
 }
 
 #[derive(Serde, Drop, Copy, PartialEq, Introspect, DojoStore, Default)]
@@ -68,6 +69,7 @@ pub impl U8IntoTileType of Into<u8, TileType> {
             5 => TileType::Road,
             6 => TileType::Tree,
             7 => TileType::DirtRoad,
+            8 => TileType::Ocean,
             _ => panic!("Invalid tile type"),
         }
     }
@@ -107,6 +109,7 @@ pub impl TileTypeIntoU8 of Into<TileType, u8> {
             TileType::Road => 5,
             TileType::Tree => 6,
             TileType::DirtRoad => 7,
+            TileType::Ocean => 8,
         }
     }
 }
