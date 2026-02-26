@@ -36,4 +36,5 @@ mod tests {
     mod test_register_map;
     mod test_resign;
     mod test_stats;
+    mod test_ocean;
 }
