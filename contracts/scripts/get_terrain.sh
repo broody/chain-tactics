@@ -61,7 +61,7 @@ if [ ${#TILES[@]} -ne "$TILE_COUNT" ]; then
   exit 1
 fi
 
-LOOKUP=('.' 'M' 'C' 'F' 'H' 'R' 'T' 'D')
+LOOKUP=('.' 'M' 'C' 'F' 'H' 'R' 'T' 'D' 'O')
 
 # Build full grid initialized to grass
 TOTAL=$(( WIDTH * HEIGHT ))
