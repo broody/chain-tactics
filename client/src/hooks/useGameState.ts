@@ -12,7 +12,7 @@ import {
   UNIT_TYPES,
   type GamePlayerState,
 } from "../data/gameStore";
-import { GRID_SIZE, TileType } from "../game/types";
+import { TileType, BorderType } from "../game/types";
 
 const TILE_TYPE_MAP: Record<string, number> = {
   Grass: TileType.Grass,
@@ -24,7 +24,22 @@ const TILE_TYPE_MAP: Record<string, number> = {
   Tree: TileType.Tree,
   DirtRoad: TileType.DirtRoad,
   Dirt_Road: TileType.DirtRoad,
+  Ocean: TileType.Ocean,
 };
+
+const BORDER_TYPE_MAP: Record<string, number> = {
+  None: BorderType.None,
+  Bluff: BorderType.Bluff,
+  Cliff: BorderType.Cliff,
+  Beach: BorderType.Beach,
+};
+
+function parseBorderType(value: string | number): number {
+  if (typeof value === "number") return value;
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric)) return numeric;
+  return BORDER_TYPE_MAP[value] ?? BorderType.None;
+}
 
 const BUILDING_TYPE_MAP: Record<string, number> = {
   City: 1,
@@ -178,11 +193,13 @@ function processEntityUpdates(
   }
 }
 
-/** Build the tile map from initial entity data */
+/** Build the tile map and border map from initial entity data */
 function buildTileMap(
   tiles: StandardizedQueryResult<Schema>,
   buildings: StandardizedQueryResult<Schema>,
-): Uint8Array {
+  gridWidth: number,
+  gridHeight: number,
+): { tileMap: Uint8Array; borderMap: Uint8Array } {
   const terrainLookup: Record<number, number> = {
     0: TileType.Grass,
     1: TileType.Mountain,
@@ -192,9 +209,12 @@ function buildTileMap(
     5: TileType.Road,
     6: TileType.Tree,
     7: TileType.DirtRoad,
+    8: TileType.Ocean,
   };
 
-  const tileMap = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  const size = gridWidth * gridHeight;
+  const tileMap = new Uint8Array(size);
+  const borderMap = new Uint8Array(size);
 
   for (const entity of tiles) {
     const tile = entity.models?.hashfront?.MapTile;
@@ -202,9 +222,12 @@ function buildTileMap(
     const x = toNumber(tile.x);
     const y = toNumber(tile.y);
     const tileType = parseTileType(tile.tile_type as string | number);
-    const idx = y * GRID_SIZE + x;
-    if (idx >= 0 && idx < tileMap.length) {
+    const idx = y * gridWidth + x;
+    if (idx >= 0 && idx < size) {
       tileMap[idx] = terrainLookup[tileType] ?? TileType.Grass;
+      borderMap[idx] = parseBorderType(
+        (tile as Record<string, unknown>).border_type as string | number,
+      );
     }
   }
 
@@ -216,14 +239,14 @@ function buildTileMap(
     const buildingType = parseBuildingType(
       building.building_type as string | number,
     );
-    const idx = y * GRID_SIZE + x;
-    if (idx < 0 || idx >= tileMap.length) continue;
+    const idx = y * gridWidth + x;
+    if (idx < 0 || idx >= size) continue;
     if (buildingType === 1) tileMap[idx] = TileType.City;
     else if (buildingType === 2) tileMap[idx] = TileType.Factory;
     else if (buildingType === 3) tileMap[idx] = TileType.HQ;
   }
 
-  return tileMap;
+  return { tileMap, borderMap };
 }
 
 export function useGameState(id: string | undefined): {
@@ -365,17 +388,16 @@ export function useGameState(id: string | undefined): {
             ...initialData2.getItems(),
           ].filter((e) => e.models?.hashfront?.Building);
 
-          const tileMap = buildTileMap(tileResult.getItems(), buildingEntities);
+          const gameWidth = gameInfo?.width ?? 20;
+          const gameHeight = gameInfo?.height ?? 20;
+          const { tileMap, borderMap } = buildTileMap(
+            tileResult.getItems(),
+            buildingEntities,
+            gameWidth,
+            gameHeight,
+          );
 
-          const gameWidth = gameInfo?.width ?? 0;
-          const gameHeight = gameInfo?.height ?? 0;
-          if (gameWidth !== GRID_SIZE || gameHeight !== GRID_SIZE) {
-            console.warn(
-              `Map dimensions (${gameWidth}x${gameHeight}) do not match GRID_SIZE (${GRID_SIZE}). Render may be glitchy.`,
-            );
-          }
-
-          store.setTileMap(tileMap);
+          store.setTileMap(tileMap, borderMap, gameWidth, gameHeight);
         }
 
         if (!active) return;

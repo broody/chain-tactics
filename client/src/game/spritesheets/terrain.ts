@@ -12,22 +12,55 @@ export const terrainAtlas = {
       frame: { x: TILE, y: TILE * 8, w: TILE, h: TILE },
     },
     bluff_top_edge: {
-      frame: { x: TILE * 3, y: TILE * 6, w: TILE, h: TILE },
-    },
-    bluff_bottom_edge: {
       frame: { x: TILE * 3, y: TILE * 4, w: TILE, h: TILE },
     },
+    bluff_bottom_edge: {
+      frame: { x: TILE * 3, y: TILE * 6, w: TILE, h: TILE },
+    },
     bluff_right_edge: {
-      frame: { x: TILE * 2, y: TILE * 5, w: TILE, h: TILE },
+      frame: { x: TILE * 4, y: TILE * 5, w: TILE, h: TILE },
     },
     bluff_left_edge: {
-      frame: { x: TILE * 4, y: TILE * 5, w: TILE, h: TILE },
+      frame: { x: TILE * 2, y: TILE * 5, w: TILE, h: TILE },
     },
     bluff_bottom_left: {
       frame: { x: 0, y: TILE * 9, w: TILE, h: TILE },
     },
     bluff_bottom_right: {
       frame: { x: TILE, y: TILE * 9, w: TILE, h: TILE },
+    },
+    bluff_inner_top_left: {
+      frame: { x: TILE * 2, y: TILE * 4, w: TILE, h: TILE },
+    },
+    bluff_inner_top_right: {
+      frame: { x: TILE * 4, y: TILE * 4, w: TILE, h: TILE },
+    },
+    bluff_inner_bottom_left: {
+      frame: { x: TILE * 2, y: TILE * 6, w: TILE, h: TILE },
+    },
+    bluff_inner_bottom_right: {
+      frame: { x: TILE * 4, y: TILE * 6, w: TILE, h: TILE },
+    },
+    bluff_cove_top: {
+      frame: { x: TILE * 5, y: TILE * 6, w: TILE, h: TILE },
+    },
+    bluff_cove_right: {
+      frame: { x: TILE * 2, y: TILE * 7, w: TILE, h: TILE },
+    },
+    bluff_cove_left: {
+      frame: { x: TILE * 4, y: TILE * 7, w: TILE, h: TILE },
+    },
+    bluff_cove_bottom: {
+      frame: { x: TILE * 5, y: TILE * 4, w: TILE, h: TILE },
+    },
+    bluff_cove_parallel_vertical: {
+      frame: { x: TILE * 5, y: TILE * 5, w: TILE, h: TILE },
+    },
+    bluff_cove_parallel_horizontal: {
+      frame: { x: TILE * 3, y: TILE * 7, w: TILE, h: TILE },
+    },
+    bluff_cove_enclosed: {
+      frame: { x: TILE * 5, y: TILE * 7, w: TILE, h: TILE },
     },
     beach_top_left: {
       frame: { x: 0, y: TILE * 10, w: TILE, h: TILE },
@@ -42,28 +75,61 @@ export const terrainAtlas = {
       frame: { x: TILE, y: TILE * 11, w: TILE, h: TILE },
     },
     beach_top_edge: {
-      frame: { x: TILE * 3, y: TILE * 10, w: TILE, h: TILE },
-    },
-    beach_bottom_edge: {
       frame: { x: TILE * 3, y: TILE * 8, w: TILE, h: TILE },
     },
-    beach_right_edge: {
-      frame: { x: TILE * 2, y: TILE * 9, w: TILE, h: TILE },
+    beach_bottom_edge: {
+      frame: { x: TILE * 3, y: TILE * 10, w: TILE, h: TILE },
     },
-    beach_left_edge: {
+    beach_right_edge: {
       frame: { x: TILE * 4, y: TILE * 9, w: TILE, h: TILE },
     },
-    cliff_top_edge: {
-      frame: { x: TILE * 3, y: TILE * 2, w: TILE, h: TILE },
+    beach_left_edge: {
+      frame: { x: TILE * 2, y: TILE * 9, w: TILE, h: TILE },
     },
-    cliff_bottom_edge: {
+    beach_inner_top_left: {
+      frame: { x: TILE * 2, y: TILE * 8, w: TILE, h: TILE },
+    },
+    beach_inner_top_right: {
+      frame: { x: TILE * 4, y: TILE * 8, w: TILE, h: TILE },
+    },
+    beach_inner_bottom_left: {
+      frame: { x: TILE * 2, y: TILE * 10, w: TILE, h: TILE },
+    },
+    beach_inner_bottom_right: {
+      frame: { x: TILE * 4, y: TILE * 10, w: TILE, h: TILE },
+    },
+    beach_cove_top: {
+      frame: { x: TILE * 5, y: TILE * 10, w: TILE, h: TILE },
+    },
+    beach_cove_bottom: {
+      frame: { x: TILE * 5, y: TILE * 8, w: TILE, h: TILE },
+    },
+    beach_cove_left: {
+      frame: { x: TILE * 4, y: TILE * 11, w: TILE, h: TILE },
+    },
+    beach_cove_right: {
+      frame: { x: TILE * 2, y: TILE * 11, w: TILE, h: TILE },
+    },
+    beach_cove_parallel_vertical: {
+      frame: { x: TILE * 5, y: TILE * 9, w: TILE, h: TILE },
+    },
+    beach_cove_parallel_horizontal: {
+      frame: { x: TILE * 3, y: TILE * 11, w: TILE, h: TILE },
+    },
+    beach_cove_enclosed: {
+      frame: { x: TILE * 5, y: TILE * 11, w: TILE, h: TILE },
+    },
+    cliff_top_edge: {
       frame: { x: TILE * 3, y: 0, w: TILE, h: TILE },
     },
+    cliff_bottom_edge: {
+      frame: { x: TILE * 3, y: TILE * 2, w: TILE, h: TILE },
+    },
     cliff_right_edge: {
-      frame: { x: TILE * 2, y: TILE, w: TILE, h: TILE },
+      frame: { x: TILE * 4, y: TILE, w: TILE, h: TILE },
     },
     cliff_left_edge: {
-      frame: { x: TILE * 4, y: TILE, w: TILE, h: TILE },
+      frame: { x: TILE * 2, y: TILE, w: TILE, h: TILE },
     },
     cliff_top_left: {
       frame: { x: 0, y: TILE * 6, w: TILE, h: TILE },
@@ -76,6 +142,39 @@ export const terrainAtlas = {
     },
     cliff_bottom_right: {
       frame: { x: TILE, y: TILE * 7, w: TILE, h: TILE },
+    },
+    cliff_inner_top_left: {
+      frame: { x: TILE * 2, y: 0, w: TILE, h: TILE },
+    },
+    cliff_inner_top_right: {
+      frame: { x: TILE * 4, y: 0, w: TILE, h: TILE },
+    },
+    cliff_inner_bottom_left: {
+      frame: { x: TILE * 2, y: TILE * 2, w: TILE, h: TILE },
+    },
+    cliff_inner_bottom_right: {
+      frame: { x: TILE * 4, y: TILE * 2, w: TILE, h: TILE },
+    },
+    cliff_cove_top: {
+      frame: { x: TILE * 5, y: TILE * 2, w: TILE, h: TILE },
+    },
+    cliff_cove_bottom: {
+      frame: { x: TILE * 5, y: 0, w: TILE, h: TILE },
+    },
+    cliff_cove_left: {
+      frame: { x: TILE * 4, y: TILE * 3, w: TILE, h: TILE },
+    },
+    cliff_cove_right: {
+      frame: { x: TILE * 2, y: TILE * 3, w: TILE, h: TILE },
+    },
+    cliff_cove_parallel_vertical: {
+      frame: { x: TILE * 5, y: TILE, w: TILE, h: TILE },
+    },
+    cliff_cove_parallel_horizontal: {
+      frame: { x: TILE * 3, y: TILE * 3, w: TILE, h: TILE },
+    },
+    cliff_cove_enclosed: {
+      frame: { x: TILE * 5, y: TILE * 3, w: TILE, h: TILE },
     },
     grass: {
       frame: { x: TILE, y: TILE, w: TILE, h: TILE },
@@ -296,6 +395,18 @@ export const terrainAtlas = {
     dirtroad_bottom_right: {
       frame: { x: TILE * 9, y: TILE * 15, w: TILE, h: TILE },
     },
+    city_idle: {
+      frame: { x: TILE, y: TILE * 13, w: TILE, h: TILE },
+    },
+    city_producing_0: {
+      frame: { x: TILE, y: TILE * 13, w: TILE, h: TILE },
+    },
+    city_producing_1: {
+      frame: { x: TILE * 2, y: TILE * 13, w: TILE, h: TILE },
+    },
+    city_damaged: {
+      frame: { x: 0, y: TILE * 13, w: TILE, h: TILE },
+    },
     factory_idle: {
       frame: { x: TILE, y: TILE * 14, w: TILE, h: TILE },
     },
@@ -308,18 +419,6 @@ export const terrainAtlas = {
     factory_damaged: {
       frame: { x: 0, y: TILE * 14, w: TILE, h: TILE },
     },
-    barracks_idle: {
-      frame: { x: TILE, y: TILE * 13, w: TILE, h: TILE },
-    },
-    barracks_producing_0: {
-      frame: { x: TILE, y: TILE * 13, w: TILE, h: TILE },
-    },
-    barracks_producing_1: {
-      frame: { x: TILE * 2, y: TILE * 13, w: TILE, h: TILE },
-    },
-    barracks_damaged: {
-      frame: { x: 0, y: TILE * 13, w: TILE, h: TILE },
-    },
     hq_top: {
       frame: { x: TILE * 3, y: TILE * 13, w: TILE, h: TILE },
     },
@@ -328,8 +427,8 @@ export const terrainAtlas = {
     },
   },
   animations: {
+    city_producing: ["city_producing_0", "city_producing_1"],
     factory_producing: ["factory_producing_0", "factory_producing_1"],
-    barracks_producing: ["barracks_producing_0", "barracks_producing_1"],
   },
   meta: {
     image: "/tilesets/terrain.png",

@@ -1,4 +1,4 @@
-import { GRID_SIZE, TileType } from "./types";
+import { TileType } from "./types";
 
 type UnitMoveType = "rifle" | "tank" | "artillery";
 
@@ -13,6 +13,7 @@ const TILE_COST: Record<TileType, number> = {
   [TileType.Mountain]: 2,
   [TileType.Tree]: 1,
   [TileType.Barracks]: 1,
+  [TileType.Ocean]: -1,
 };
 
 interface Node {
@@ -45,6 +46,7 @@ function isRoadTile(tileType: TileType): boolean {
 }
 
 function canTraverseTile(unitType: UnitMoveType, tileType: TileType): boolean {
+  if (tileType === TileType.Ocean) return false;
   if (tileType === TileType.Mountain) return unitType === "rifle";
   return true;
 }
@@ -53,10 +55,11 @@ function initialRoadBonus(
   tileMap: Uint8Array,
   fromX: number,
   fromY: number,
+  gridWidth: number,
   unitType: UnitMoveType,
 ): number {
   if (unitType !== "tank" && unitType !== "artillery") return 0;
-  const startTile = tileMap[fromY * GRID_SIZE + fromX] as TileType;
+  const startTile = tileMap[fromY * gridWidth + fromX] as TileType;
   return isRoadTile(startTile) ? 2 : 0;
 }
 
@@ -87,12 +90,17 @@ function resolveStepCost(
   return { stepCost, nextRoadBonus };
 }
 
-function stateKey(x: number, y: number, roadBonusRemaining: number): number {
-  return (y * GRID_SIZE + x) * 3 + roadBonusRemaining;
+function stateKey(
+  x: number,
+  y: number,
+  gridWidth: number,
+  roadBonusRemaining: number,
+): number {
+  return (y * gridWidth + x) * 3 + roadBonusRemaining;
 }
 
-function coordKey(x: number, y: number): number {
-  return y * GRID_SIZE + x;
+function coordKey(x: number, y: number, gridWidth: number): number {
+  return y * gridWidth + x;
 }
 
 /**
@@ -102,6 +110,8 @@ function coordKey(x: number, y: number): number {
  */
 export function findPath(
   tileMap: Uint8Array,
+  gridWidth: number,
+  gridHeight: number,
   fromX: number,
   fromY: number,
   toX: number,
@@ -117,18 +127,24 @@ export function findPath(
   const finalBlocked = destinationBlocked ?? blocked;
 
   // Check destination is in bounds and passable
-  if (toX < 0 || toX >= GRID_SIZE || toY < 0 || toY >= GRID_SIZE) return [];
-  const destTile = tileMap[toY * GRID_SIZE + toX] as TileType;
+  if (toX < 0 || toX >= gridWidth || toY < 0 || toY >= gridHeight) return [];
+  const destTile = tileMap[toY * gridWidth + toX] as TileType;
   if (!canTraverseTile(moveType, destTile)) return [];
   const destCost = TILE_COST[destTile];
   if (destCost < 0) return [];
-  if (finalBlocked?.has(coordKey(toX, toY))) return [];
+  if (finalBlocked?.has(coordKey(toX, toY, gridWidth))) return [];
 
   const open: Node[] = [];
   const closed = new Set<number>();
   const bestG = new Map<number, number>();
-  const startRoadBonus = initialRoadBonus(tileMap, fromX, fromY, moveType);
-  const startStateKey = stateKey(fromX, fromY, startRoadBonus);
+  const startRoadBonus = initialRoadBonus(
+    tileMap,
+    fromX,
+    fromY,
+    gridWidth,
+    moveType,
+  );
+  const startStateKey = stateKey(fromX, fromY, gridWidth, startRoadBonus);
 
   const start: Node = {
     x: fromX,
@@ -162,7 +178,12 @@ export function findPath(
       return path;
     }
 
-    const ck = stateKey(current.x, current.y, current.roadBonusRemaining);
+    const ck = stateKey(
+      current.x,
+      current.y,
+      gridWidth,
+      current.roadBonusRemaining,
+    );
     if (closed.has(ck)) continue;
     closed.add(ck);
 
@@ -170,9 +191,9 @@ export function findPath(
       const nx = current.x + dx;
       const ny = current.y + dy;
 
-      if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
+      if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
 
-      const tileType = tileMap[ny * GRID_SIZE + nx] as TileType;
+      const tileType = tileMap[ny * gridWidth + nx] as TileType;
       if (!canTraverseTile(moveType, tileType)) continue;
 
       const { stepCost, nextRoadBonus } = resolveStepCost(
@@ -180,11 +201,11 @@ export function findPath(
         moveType,
         current.roadBonusRemaining,
       );
-      const nk = stateKey(nx, ny, nextRoadBonus);
+      const nk = stateKey(nx, ny, gridWidth, nextRoadBonus);
       if (closed.has(nk)) continue;
 
       if (stepCost < 0) continue; // impassable
-      if (transitBlocked?.has(coordKey(nx, ny))) continue;
+      if (transitBlocked?.has(coordKey(nx, ny, gridWidth))) continue;
 
       const ng = current.g + stepCost;
       if (ng > maxSteps) continue; // exceeds movement budget
@@ -213,6 +234,8 @@ export function findPath(
  */
 export function findReachable(
   tileMap: Uint8Array,
+  gridWidth: number,
+  gridHeight: number,
   fromX: number,
   fromY: number,
   maxSteps: number,
@@ -224,14 +247,20 @@ export function findReachable(
   const transitBlocked = blocked;
   const finalBlocked = destinationBlocked ?? blocked;
   const bestG = new Map<number, number>();
-  const startRoadBonus = initialRoadBonus(tileMap, fromX, fromY, moveType);
+  const startRoadBonus = initialRoadBonus(
+    tileMap,
+    fromX,
+    fromY,
+    gridWidth,
+    moveType,
+  );
   const queue: {
     x: number;
     y: number;
     g: number;
     roadBonusRemaining: number;
   }[] = [{ x: fromX, y: fromY, g: 0, roadBonusRemaining: startRoadBonus }];
-  bestG.set(stateKey(fromX, fromY, startRoadBonus), 0);
+  bestG.set(stateKey(fromX, fromY, gridWidth, startRoadBonus), 0);
 
   const result: { x: number; y: number }[] = [];
   const seenCoords = new Set<number>();
@@ -249,9 +278,9 @@ export function findReachable(
       const nx = current.x + dx;
       const ny = current.y + dy;
 
-      if (nx < 0 || nx >= GRID_SIZE || ny < 0 || ny >= GRID_SIZE) continue;
+      if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
 
-      const tileType = tileMap[ny * GRID_SIZE + nx] as TileType;
+      const tileType = tileMap[ny * gridWidth + nx] as TileType;
       if (!canTraverseTile(moveType, tileType)) continue;
 
       const { stepCost, nextRoadBonus } = resolveStepCost(
@@ -260,13 +289,13 @@ export function findReachable(
         current.roadBonusRemaining,
       );
       if (stepCost < 0) continue;
-      const coord = coordKey(nx, ny);
+      const coord = coordKey(nx, ny, gridWidth);
       if (transitBlocked?.has(coord)) continue;
 
       const ng = current.g + stepCost;
       if (ng > maxSteps) continue;
 
-      const nk = stateKey(nx, ny, nextRoadBonus);
+      const nk = stateKey(nx, ny, gridWidth, nextRoadBonus);
       const prev = bestG.get(nk);
       if (prev !== undefined && ng >= prev) continue;
 

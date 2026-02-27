@@ -9,7 +9,7 @@ import {
   type GameInfo,
   type GamePlayerState,
 } from "../data/gameStore";
-import { GRID_SIZE, TileType } from "../game/types";
+import { TileType, BorderType } from "../game/types";
 
 // --- SQL row types ---
 
@@ -43,6 +43,7 @@ interface MapTileRow {
   x: number;
   y: number;
   tile_type: string | number;
+  border_type: string | number;
 }
 
 interface BuildingRow {
@@ -93,7 +94,22 @@ const TILE_TYPE_MAP: Record<string, number> = {
   Tree: TileType.Tree,
   DirtRoad: TileType.DirtRoad,
   Dirt_Road: TileType.DirtRoad,
+  Ocean: TileType.Ocean,
 };
+
+const BORDER_TYPE_MAP: Record<string, number> = {
+  None: BorderType.None,
+  Bluff: BorderType.Bluff,
+  Cliff: BorderType.Cliff,
+  Beach: BorderType.Beach,
+};
+
+function parseBorderType(value: string | number): number {
+  if (typeof value === "number") return value;
+  const numeric = Number(value);
+  if (!Number.isNaN(numeric)) return numeric;
+  return BORDER_TYPE_MAP[value] ?? BorderType.None;
+}
 
 const BUILDING_TYPE_MAP: Record<string, number> = {
   City: 1,
@@ -127,7 +143,9 @@ function toNumber(value: string | number | null | undefined): number {
 function buildTileMapFromSql(
   tiles: MapTileRow[],
   buildings: BuildingRow[],
-): Uint8Array {
+  gridWidth: number,
+  gridHeight: number,
+): { tileMap: Uint8Array; borderMap: Uint8Array } {
   const terrainLookup: Record<number, number> = {
     0: TileType.Grass,
     1: TileType.Mountain,
@@ -137,17 +155,21 @@ function buildTileMapFromSql(
     5: TileType.Road,
     6: TileType.Tree,
     7: TileType.DirtRoad,
+    8: TileType.Ocean,
   };
 
-  const tileMap = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  const size = gridWidth * gridHeight;
+  const tileMap = new Uint8Array(size);
+  const borderMap = new Uint8Array(size);
 
   for (const tile of tiles) {
     const x = toNumber(tile.x);
     const y = toNumber(tile.y);
     const tileType = parseTileType(tile.tile_type);
-    const idx = y * GRID_SIZE + x;
-    if (idx >= 0 && idx < tileMap.length) {
+    const idx = y * gridWidth + x;
+    if (idx >= 0 && idx < size) {
       tileMap[idx] = terrainLookup[tileType] ?? TileType.Grass;
+      borderMap[idx] = parseBorderType(tile.border_type);
     }
   }
 
@@ -155,14 +177,14 @@ function buildTileMapFromSql(
     const x = toNumber(building.x);
     const y = toNumber(building.y);
     const buildingType = parseBuildingType(building.building_type);
-    const idx = y * GRID_SIZE + x;
-    if (idx < 0 || idx >= tileMap.length) continue;
+    const idx = y * gridWidth + x;
+    if (idx < 0 || idx >= size) continue;
     if (buildingType === 1) tileMap[idx] = TileType.City;
     else if (buildingType === 2) tileMap[idx] = TileType.Factory;
     else if (buildingType === 3) tileMap[idx] = TileType.HQ;
   }
 
-  return tileMap;
+  return { tileMap, borderMap };
 }
 
 // --- Event union for chronological processing ---
@@ -565,8 +587,15 @@ export function useReplayState(id: string | undefined): {
         }));
         store.setPlayers(players);
 
-        const tileMap = buildTileMapFromSql(mapTileRows, buildingRows);
-        store.setTileMap(tileMap);
+        const gameWidth = toNumber(gameRow.width) || 20;
+        const gameHeight = toNumber(gameRow.height) || 20;
+        const { tileMap, borderMap } = buildTileMapFromSql(
+          mapTileRows,
+          buildingRows,
+          gameWidth,
+          gameHeight,
+        );
+        store.setTileMap(tileMap, borderMap, gameWidth, gameHeight);
 
         // Set initial units (turn 0)
         if (snaps.length > 0) {

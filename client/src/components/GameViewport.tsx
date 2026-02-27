@@ -12,7 +12,7 @@ import {
 import { Viewport } from "pixi-viewport";
 import { useGameStore, TEAMS, UNIT_MAX_HP } from "../data/gameStore";
 import type { Unit, QueuedMove } from "../data/gameStore";
-import { GRID_SIZE, TILE_PX, TILE_COLORS, TileType } from "../game/types";
+import { TILE_PX, TILE_COLORS, TileType, BorderType } from "../game/types";
 import { terrainAtlas } from "../game/spritesheets/terrain";
 import {
   unitAtlasBlue,
@@ -22,9 +22,7 @@ import {
 } from "../game/spritesheets/units";
 import { findPath, findReachable } from "../game/pathfinding";
 import { num } from "starknet";
-import { ACTIONS_ADDRESS } from "../StarknetProvider";
-
-const WORLD_SIZE = GRID_SIZE * TILE_PX;
+import { ACTIONS_ADDRESS } from "../dojo/config";
 
 function toNormalizedHex(value: string | undefined): string | null {
   if (!value) return null;
@@ -73,8 +71,15 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     if (!containerRef.current || appRef.current) return;
 
     // Capture current store state for initial rendering
-    const tileMap = useGameStore.getState().tileMap;
-    const initialUnits = useGameStore.getState().units;
+    const {
+      tileMap,
+      borderMap,
+      units: initialUnits,
+      gridWidth: GRID_W,
+      gridHeight: GRID_H,
+    } = useGameStore.getState();
+    const WORLD_W = GRID_W * TILE_PX;
+    const WORLD_H = GRID_H * TILE_PX;
 
     const app = new Application();
     await app.init({
@@ -96,8 +101,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     const vp = new Viewport({
       screenWidth: app.screen.width,
       screenHeight: app.screen.height,
-      worldWidth: WORLD_SIZE,
-      worldHeight: WORLD_SIZE,
+      worldWidth: WORLD_W,
+      worldHeight: WORLD_H,
       events: app.renderer.events,
     });
     app.stage.addChild(vp as any);
@@ -109,7 +114,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
     // Initial zoom and center on the map
     vp.scale.set(2);
-    vp.moveCenter(WORLD_SIZE / 2, WORLD_SIZE / 2);
+    vp.moveCenter(WORLD_W / 2, WORLD_H / 2);
     vp.x = Math.round(vp.x);
     vp.y = Math.round(vp.y);
 
@@ -126,9 +131,9 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     // Draw an infinitely expanding grid (practically large enough to never see the edge)
     const EXTENT = TILE_PX * 200;
     const START_X = -EXTENT;
-    const END_X = WORLD_SIZE + EXTENT;
+    const END_X = WORLD_W + EXTENT;
     const START_Y = -EXTENT;
-    const END_Y = WORLD_SIZE + EXTENT;
+    const END_Y = WORLD_H + EXTENT;
 
     // Draw vertical lines
     for (let x = START_X; x <= END_X; x += TILE_PX) {
@@ -177,8 +182,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
     }
 
     function isTileType(x: number, y: number, type: TileType): boolean {
-      if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return false;
-      return tileMap[y * GRID_SIZE + x] === type;
+      if (x < 0 || x >= GRID_W || y < 0 || y >= GRID_H) return false;
+      return tileMap[y * GRID_W + x] === type;
     }
 
     function pickAutotile(
@@ -249,33 +254,107 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       vp.addChild(anim);
     }
 
-    // Draw water under the outer border rings (2 layers).
-    for (let y = -2; y <= GRID_SIZE + 1; y++) {
-      for (let x = -2; x <= GRID_SIZE + 1; x++) {
-        const isOuterRing = x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE;
-        if (isOuterRing) {
-          addTileSprite("border_water", x, y);
+    // --- Ocean border overlay helpers ---
+    const BORDER_PREFIX: Record<number, string> = {
+      [BorderType.Bluff]: "bluff",
+      [BorderType.Cliff]: "cliff",
+      [BorderType.Beach]: "beach",
+    };
+
+    /** Check whether (x,y) is ocean (or out-of-bounds, treated as ocean). */
+    function isOceanOrOOB(x: number, y: number): boolean {
+      if (x < 0 || x >= GRID_W || y < 0 || y >= GRID_H) return true;
+      return tileMap[y * GRID_W + x] === TileType.Ocean;
+    }
+
+    /**
+     * For an ocean tile with a border type, overlay the appropriate edge and
+     * corner sprites based on adjacency to non-ocean (land) tiles.
+     */
+    function pickOceanBorder(
+      x: number,
+      y: number,
+      prefix: string,
+    ): string | null {
+      const landUp = !isOceanOrOOB(x, y - 1);
+      const landDown = !isOceanOrOOB(x, y + 1);
+      const landLeft = !isOceanOrOOB(x - 1, y);
+      const landRight = !isOceanOrOOB(x + 1, y);
+
+      // Cove — 3 cardinal land neighbors, ocean opens to one side
+      if (landDown && landLeft && landRight) return `${prefix}_cove_top`;
+      if (landUp && landLeft && landRight) return `${prefix}_cove_bottom`;
+      if (landUp && landDown && landRight) return `${prefix}_cove_left`;
+      if (landUp && landDown && landLeft) return `${prefix}_cove_right`;
+
+      // Inner corners — ocean concave: two adjacent cardinal neighbors are land
+      if (landUp && landLeft) return `${prefix}_inner_top_left`;
+      if (landUp && landRight) return `${prefix}_inner_top_right`;
+      if (landDown && landLeft) return `${prefix}_inner_bottom_left`;
+      if (landDown && landRight) return `${prefix}_inner_bottom_right`;
+
+      // Edges — one cardinal neighbor is land
+      if (landUp) return `${prefix}_top_edge`;
+      if (landDown) return `${prefix}_bottom_edge`;
+      if (landLeft) return `${prefix}_left_edge`;
+      if (landRight) return `${prefix}_right_edge`;
+
+      return null; // no primary overlay (outer corners handled separately)
+    }
+
+    /** Add outer corner overlays for any diagonal land whose adjacent cardinals are both ocean. */
+    function addOuterCorners(x: number, y: number, prefix: string) {
+      const landUp = !isOceanOrOOB(x, y - 1);
+      const landDown = !isOceanOrOOB(x, y + 1);
+      const landLeft = !isOceanOrOOB(x - 1, y);
+      const landRight = !isOceanOrOOB(x + 1, y);
+
+      // Named for opposite direction (bluff tip faces away from land)
+      if (!landUp && !landLeft && !isOceanOrOOB(x - 1, y - 1))
+        addTileSprite(`${prefix}_bottom_right`, x, y);
+      if (!landUp && !landRight && !isOceanOrOOB(x + 1, y - 1))
+        addTileSprite(`${prefix}_bottom_left`, x, y);
+      if (!landDown && !landLeft && !isOceanOrOOB(x - 1, y + 1))
+        addTileSprite(`${prefix}_top_right`, x, y);
+      if (!landDown && !landRight && !isOceanOrOOB(x + 1, y + 1))
+        addTileSprite(`${prefix}_top_left`, x, y);
+    }
+
+    /** Infer and add outer corner overlays for plain ocean tiles from neighboring border tiles. */
+    function inferOuterCorners(x: number, y: number): void {
+      const diags: { dx: number; dy: number; corner: string }[] = [
+        { dx: -1, dy: -1, corner: "bottom_right" },
+        { dx: 1, dy: -1, corner: "bottom_left" },
+        { dx: -1, dy: 1, corner: "top_right" },
+        { dx: 1, dy: 1, corner: "top_left" },
+      ];
+
+      for (const { dx, dy, corner } of diags) {
+        if (isOceanOrOOB(x + dx, y + dy)) continue; // diagonal must be land
+        if (!isOceanOrOOB(x + dx, y)) continue; // horizontal cardinal must be ocean
+        if (!isOceanOrOOB(x, y + dy)) continue; // vertical cardinal must be ocean
+
+        // Infer border type from the adjacent cardinal ocean tiles
+        let border = BorderType.None as number;
+        const hx = x + dx;
+        const vy = y + dy;
+        if (hx >= 0 && hx < GRID_W) {
+          border = borderMap[y * GRID_W + hx];
+        }
+        if (border === BorderType.None && vy >= 0 && vy < GRID_H) {
+          border = borderMap[vy * GRID_W + x];
+        }
+
+        if (border !== BorderType.None) {
+          const prefix = BORDER_PREFIX[border];
+          if (prefix) addTileSprite(`${prefix}_${corner}`, x, y);
         }
       }
     }
 
-    // Cliff transition pieces on top of the water ring.
-    addTileSprite("cliff_top_left", -1, -1);
-    addTileSprite("cliff_top_right", GRID_SIZE, -1);
-    addTileSprite("cliff_bottom_left", -1, GRID_SIZE);
-    addTileSprite("cliff_bottom_right", GRID_SIZE, GRID_SIZE);
-    for (let x = 0; x < GRID_SIZE; x++) {
-      addTileSprite("cliff_top_edge", x, -1);
-      addTileSprite("cliff_bottom_edge", x, GRID_SIZE);
-    }
-    for (let y = 0; y < GRID_SIZE; y++) {
-      addTileSprite("cliff_left_edge", -1, y);
-      addTileSprite("cliff_right_edge", GRID_SIZE, y);
-    }
-
-    for (let y = 0; y < GRID_SIZE; y++) {
-      for (let x = 0; x < GRID_SIZE; x++) {
-        const tile = tileMap[y * GRID_SIZE + x] as TileType;
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        const tile = tileMap[y * GRID_W + x] as TileType;
 
         if (tile === TileType.Grass) {
           addTileSprite(pickGrass(x, y), x, y);
@@ -309,9 +388,26 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
             addTileSprite(pickGrass(x, y - 1), x, y - 1);
             addTileSprite("hq_top", x, y - 1);
           }
-        } else if (tile === TileType.Barracks) {
+        } else if (tile === TileType.City) {
           addTileSprite(pickGrass(x, y), x, y);
-          addTileAnim("barracks_producing", x, y);
+          addTileAnim("city_producing", x, y);
+        } else if (tile === TileType.Ocean) {
+          // Base water tile
+          addTileSprite("border_water", x, y);
+          const border = borderMap[y * GRID_W + x] as BorderType;
+          if (border !== BorderType.None) {
+            const prefix = BORDER_PREFIX[border];
+            if (prefix) {
+              // Primary overlay (cove / inner corner / edge)
+              const primary = pickOceanBorder(x, y, prefix);
+              if (primary) addTileSprite(primary, x, y);
+              // Additional outer corners for diagonal land not adjacent to any cardinal land
+              addOuterCorners(x, y, prefix);
+            }
+          } else {
+            // Plain ocean — infer outer corners from neighboring border tiles
+            inferOuterCorners(x, y);
+          }
         } else {
           const color = TILE_COLORS[tile];
           gridGfx.rect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX).fill(color);
@@ -491,7 +587,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       for (const u of useGameStore.getState().units) {
         if (u.id === excludeId) continue;
         if (mode === "enemy" && unitTeam && u.team === unitTeam) continue;
-        blocked.add(u.y * GRID_SIZE + u.x);
+        blocked.add(u.y * GRID_W + u.x);
       }
       return blocked;
     }
@@ -785,6 +881,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const destinationBlocked = getBlockedTiles(selectedUnit.id, "all");
       const reachable = findReachable(
         tileMap,
+        GRID_W,
+        GRID_H,
         selectedUnit.x,
         selectedUnit.y,
         range,
@@ -949,7 +1047,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
       hoverGfx.clear();
       hoveredEnemy = null;
-      if (gridX >= 0 && gridX < GRID_SIZE && gridY >= 0 && gridY < GRID_SIZE) {
+      if (gridX >= 0 && gridX < GRID_W && gridY >= 0 && gridY < GRID_H) {
         hoverGfx
           .rect(gridX * TILE_PX, gridY * TILE_PX, TILE_PX, TILE_PX)
           .fill({ color: 0xffffff, alpha: 0.2 });
@@ -974,8 +1072,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
 
       const gridX = Math.floor(e.world.x / TILE_PX);
       const gridY = Math.floor(e.world.y / TILE_PX);
-      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE)
-        return;
+      if (gridX < 0 || gridX >= GRID_W || gridY < 0 || gridY >= GRID_H) return;
 
       // Find unit at clicked tile — click empty space to deselect
       const { units, moveQueue } = useGameStore.getState();
@@ -1052,8 +1149,7 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const gridX = Math.floor(worldPos.x / TILE_PX);
       const gridY = Math.floor(worldPos.y / TILE_PX);
 
-      if (gridX < 0 || gridX >= GRID_SIZE || gridY < 0 || gridY >= GRID_SIZE)
-        return;
+      if (gridX < 0 || gridX >= GRID_W || gridY < 0 || gridY >= GRID_H) return;
 
       // If unit already has a queued move (no attack yet), allow adding attack
       const existingQueue = useGameStore
@@ -1153,6 +1249,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           const destinationBlocked = getBlockedTiles(selectedUnit.id, "all");
           const reachable = findReachable(
             tileMap,
+            GRID_W,
+            GRID_H,
             selectedUnit.x,
             selectedUnit.y,
             range,
@@ -1184,6 +1282,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
           for (const candidate of candidates) {
             movePath = findPath(
               tileMap,
+              GRID_W,
+              GRID_H,
               selectedUnit.x,
               selectedUnit.y,
               candidate.x,
@@ -1222,6 +1322,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const destinationBlocked = getBlockedTiles(selectedUnit.id, "all");
       const path = findPath(
         tileMap,
+        GRID_W,
+        GRID_H,
         selectedUnit.x,
         selectedUnit.y,
         gridX,
@@ -1602,6 +1704,8 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
               // Animate along a pathfound route from old to new position
               const path = findPath(
                 tileMap,
+                GRID_W,
+                GRID_H,
                 prevUnit.x,
                 prevUnit.y,
                 unit.x,

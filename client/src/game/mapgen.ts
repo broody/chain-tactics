@@ -1,4 +1,4 @@
-import { GRID_SIZE, TileType } from "./types";
+import { TileType } from "./types";
 
 /**
  * ASCII map format:
@@ -10,7 +10,7 @@ import { GRID_SIZE, TileType } from "./types";
  *   R  = Road
  *
  * Each row is one line, characters map 1:1 to grid columns.
- * Must be exactly GRID_SIZE x GRID_SIZE.
+ * Dimensions are inferred from the input.
  */
 
 const CHAR_TO_TILE: Record<string, TileType> = {
@@ -23,40 +23,53 @@ const CHAR_TO_TILE: Record<string, TileType> = {
   T: TileType.Tree,
   D: TileType.DirtRoad,
   B: TileType.Barracks,
+  O: TileType.Ocean,
 };
 
-export function parseMap(ascii: string): Uint8Array {
+export function parseMap(ascii: string): {
+  map: Uint8Array;
+  width: number;
+  height: number;
+} {
   const rows = ascii
     .trim()
     .split("\n")
     .map((r) => r.trim());
 
-  if (rows.length !== GRID_SIZE) {
-    throw new Error(`Map must have ${GRID_SIZE} rows, got ${rows.length}`);
+  const height = rows.length;
+  if (height === 0) {
+    throw new Error("Map has no rows");
   }
 
-  const map = new Uint8Array(GRID_SIZE * GRID_SIZE);
+  const width = rows[0].length;
 
-  for (let y = 0; y < GRID_SIZE; y++) {
-    if (rows[y].length !== GRID_SIZE) {
+  const map = new Uint8Array(width * height);
+
+  for (let y = 0; y < height; y++) {
+    if (rows[y].length !== width) {
       throw new Error(
-        `Row ${y} must have ${GRID_SIZE} chars, got ${rows[y].length}`,
+        `Row ${y} must have ${width} chars, got ${rows[y].length}`,
       );
     }
-    for (let x = 0; x < GRID_SIZE; x++) {
+    for (let x = 0; x < width; x++) {
       const ch = rows[y][x];
       const tile = CHAR_TO_TILE[ch];
       if (tile === undefined) {
         throw new Error(`Unknown tile char '${ch}' at (${x},${y})`);
       }
-      map[y * GRID_SIZE + x] = tile;
+      map[y * width + x] = tile;
     }
   }
 
-  return map;
+  return { map, width, height };
 }
 
 /** Get tile at (x,y) */
-export function getTile(map: Uint8Array, x: number, y: number): TileType {
-  return map[y * GRID_SIZE + x] as TileType;
+export function getTile(
+  map: Uint8Array,
+  x: number,
+  y: number,
+  gridWidth: number,
+): TileType {
+  return map[y * gridWidth + x] as TileType;
 }

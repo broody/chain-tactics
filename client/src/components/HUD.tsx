@@ -9,13 +9,13 @@ import { ControllerConnector } from "@cartridge/connector";
 import { lookupAddresses } from "@cartridge/controller";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ACTIONS_ADDRESS } from "../StarknetProvider";
+import { ACTIONS_ADDRESS } from "../dojo/config";
 import { useToast } from "./Toast";
 import { parseTransactionError } from "../utils/parseTransactionError";
 import { PixelButton } from "./PixelButton";
 import { PixelPanel } from "./PixelPanel";
 import { useGameStore, TEAMS, UNIT_MAX_HP } from "../data/gameStore";
-import { GRID_SIZE, TileType } from "../game/types";
+import { TileType } from "../game/types";
 
 const PLAYER_COLORS: Record<string, string> = {
   red: "#ef4444",
@@ -72,6 +72,7 @@ const TERRAIN_DEFENSE: Record<number, number> = {
   [TileType.Tree]: 1,
   [TileType.DirtRoad]: 0,
   [TileType.Barracks]: 0,
+  [TileType.Ocean]: 0,
 };
 
 const TERRAIN_NAMES: Record<number, string> = {
@@ -84,6 +85,7 @@ const TERRAIN_NAMES: Record<number, string> = {
   [TileType.Tree]: "Forest",
   [TileType.DirtRoad]: "Dirt Road",
   [TileType.Barracks]: "Barracks",
+  [TileType.Ocean]: "Ocean",
 };
 
 function normalizeAddressHex(value: string | null | undefined): string | null {
@@ -131,6 +133,8 @@ export default function HUD() {
   const selectedUnitId = useGameStore((s) => s.selectedUnitId);
   const units = useGameStore((s) => s.units);
   const tileMap = useGameStore((s) => s.tileMap);
+  const gridWidth = useGameStore((s) => s.gridWidth);
+  const gridHeight = useGameStore((s) => s.gridHeight);
 
   const selectedUnit = useMemo(() => {
     if (selectedUnitId === null) return null;
@@ -143,14 +147,14 @@ export default function HUD() {
     const queued = moveQueue.find((m) => m.unitId === selectedUnit.id);
     const ux = queued ? queued.destX : selectedUnit.x;
     const uy = queued ? queued.destY : selectedUnit.y;
-    if (ux < 0 || ux >= GRID_SIZE || uy < 0 || uy >= GRID_SIZE) return null;
-    const tileType = tileMap[uy * GRID_SIZE + ux] as TileType;
+    if (ux < 0 || ux >= gridWidth || uy < 0 || uy >= gridHeight) return null;
+    const tileType = tileMap[uy * gridWidth + ux] as TileType;
     return {
       type: tileType,
       name: TERRAIN_NAMES[tileType] ?? "Unknown",
       defense: TERRAIN_DEFENSE[tileType] ?? 0,
     };
-  }, [selectedUnit, tileMap, moveQueue]);
+  }, [selectedUnit, tileMap, moveQueue, gridWidth, gridHeight]);
 
   const currentPlayer = game?.currentPlayer ?? null;
   const gameName = game?.name ?? "";

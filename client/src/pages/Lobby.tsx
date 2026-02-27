@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { PixelButton } from "../components/PixelButton";
 import { PixelPanel } from "../components/PixelPanel";
 import { BlueprintContainer } from "../components/BlueprintContainer";
-import { ACTIONS_ADDRESS } from "../StarknetProvider";
+import { ACTIONS_ADDRESS } from "../dojo/config";
 import { useToast } from "../components/Toast";
 import { parseTransactionError } from "../utils/parseTransactionError";
 import { fetchToriiSql } from "../utils/toriiSql";

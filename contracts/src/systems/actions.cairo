@@ -122,41 +122,31 @@ pub mod actions {
                     let (x, y) = map_helpers::index_to_xy(grid_index, width);
                     let border_type: BorderType = (tile_val / 16).into();
 
-                    // Check 4 neighbors; out-of-bounds counts as non-ocean (map edge)
+                    // Check 4 cardinal neighbors; out-of-bounds counts as ocean
+                    // (map edges are assumed to extend into open ocean)
                     let mut has_land_neighbor = false;
-                    if x == 0 {
-                        has_land_neighbor = true;
-                    } else {
+                    if x > 0 {
                         let left_index = map_helpers::xy_to_index(x - 1, y, width);
                         let left_tile_type: u8 = tile_type_by_index.get(left_index.into());
                         if left_tile_type != ocean_tile_type {
                             has_land_neighbor = true;
                         }
                     }
-                    if !has_land_neighbor && x + 1 >= width {
-                        has_land_neighbor = true;
-                    }
-                    if !has_land_neighbor {
+                    if !has_land_neighbor && x + 1 < width {
                         let right_index = map_helpers::xy_to_index(x + 1, y, width);
                         let right_tile_type: u8 = tile_type_by_index.get(right_index.into());
                         if right_tile_type != ocean_tile_type {
                             has_land_neighbor = true;
                         }
                     }
-                    if !has_land_neighbor && y == 0 {
-                        has_land_neighbor = true;
-                    }
-                    if !has_land_neighbor {
+                    if !has_land_neighbor && y > 0 {
                         let up_index = map_helpers::xy_to_index(x, y - 1, width);
                         let up_tile_type: u8 = tile_type_by_index.get(up_index.into());
                         if up_tile_type != ocean_tile_type {
                             has_land_neighbor = true;
                         }
                     }
-                    if !has_land_neighbor && y + 1 >= height {
-                        has_land_neighbor = true;
-                    }
-                    if !has_land_neighbor {
+                    if !has_land_neighbor && y + 1 < height {
                         let down_index = map_helpers::xy_to_index(x, y + 1, width);
                         let down_tile_type: u8 = tile_type_by_index.get(down_index.into());
                         if down_tile_type != ocean_tile_type {

@@ -86,7 +86,15 @@ export interface QueuedMove {
 // --- Store ---
 interface GameStore {
   tileMap: Uint8Array;
-  setTileMap: (map: Uint8Array) => void;
+  borderMap: Uint8Array;
+  gridWidth: number;
+  gridHeight: number;
+  setTileMap: (
+    map: Uint8Array,
+    borders: Uint8Array,
+    width: number,
+    height: number,
+  ) => void;
 
   units: Unit[];
   nextId: number;
@@ -136,7 +144,16 @@ interface GameStore {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   tileMap: new Uint8Array(0),
-  setTileMap: (map) => set({ tileMap: new Uint8Array(map) }),
+  borderMap: new Uint8Array(0),
+  gridWidth: 0,
+  gridHeight: 0,
+  setTileMap: (map, borders, width, height) =>
+    set({
+      tileMap: new Uint8Array(map),
+      borderMap: new Uint8Array(borders),
+      gridWidth: width,
+      gridHeight: height,
+    }),
 
   units: [],
   nextId: 1,

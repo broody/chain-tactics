@@ -1,0 +1,6 @@
+HQ 1 2 1
+HQ 2 19 4
+City 0 6 5
+City 0 14 6
+Factory 0 4 9
+Factory 0 17 3

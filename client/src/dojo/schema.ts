@@ -54,6 +54,7 @@ export const schema = {
       x: 0,
       y: 0,
       tile_type: "",
+      border_type: "",
     },
   },
 } as const satisfies SchemaType;

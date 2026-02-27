@@ -4,10 +4,7 @@ import { StarknetConfig, jsonRpcProvider, voyager } from "@starknet-react/core";
 import { ControllerConnector } from "@cartridge/connector";
 import type { SessionPolicies } from "@cartridge/presets";
 import { shortString } from "starknet";
-
-// TODO: set to deployed contract address
-export const ACTIONS_ADDRESS =
-  "0x05050094858a637c2c315b408377f7ce7d0481c4e60fd5bc732aad0ac7ab2862";
+import { ACTIONS_ADDRESS } from "./dojo/config";
 
 const policies: SessionPolicies = {
   contracts: {

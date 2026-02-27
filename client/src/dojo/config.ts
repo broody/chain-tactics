@@ -10,4 +10,7 @@ if (!envToriiUrl) {
 export const TORII_URL = envToriiUrl || DEFAULT_TORII_URL;
 
 export const WORLD_ADDRESS =
-  "0x006eff1d6038059b7fdea330389ef93267a83cbbf0dce5343c8792b5d78d639b";
+  "0x4e77dcdb72dba9954dce4ec5eb60e701afacf02394069172b3ea50bdea6bddd";
+
+export const ACTIONS_ADDRESS =
+  "0x108fb3acfc928a8149f4d2ce7fbeb8a0e6f8379313ed3b43406cceface03253";

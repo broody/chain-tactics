@@ -8,7 +8,9 @@
     "format": "pnpm --filter @chain-tactics/client format && cd contracts && scarb fmt",
     "build": "pnpm --filter @chain-tactics/client build",
     "build:contracts": "cd contracts && scarb build",
-    "build:all": "pnpm run build && pnpm run build:contracts"
+    "build:all": "pnpm run build && pnpm run build:contracts",
+    "sync-manifest": "bash scripts/sync-manifest.sh",
+    "torii": "bash scripts/start_torii.sh"
   },
   "dependencies": {
     "react-router-dom": "^7.13.0"

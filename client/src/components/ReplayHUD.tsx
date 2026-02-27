@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useGameStore, UNIT_MAX_HP } from "../data/gameStore";
 import { PixelPanel } from "./PixelPanel";
-import { GRID_SIZE, TileType } from "../game/types";
+import { TileType } from "../game/types";
 import type { useReplayController } from "../hooks/useReplayController";
 
 const PLAYER_COLORS: Record<string, string> = {
@@ -59,6 +59,7 @@ const TERRAIN_DEFENSE: Record<number, number> = {
   [TileType.Tree]: 1,
   [TileType.DirtRoad]: 0,
   [TileType.Barracks]: 0,
+  [TileType.Ocean]: 0,
 };
 
 const TERRAIN_NAMES: Record<number, string> = {
@@ -71,6 +72,7 @@ const TERRAIN_NAMES: Record<number, string> = {
   [TileType.Tree]: "Forest",
   [TileType.DirtRoad]: "Dirt Road",
   [TileType.Barracks]: "Barracks",
+  [TileType.Ocean]: "Ocean",
 };
 
 const SPEED_OPTIONS = [
@@ -104,6 +106,8 @@ export default function ReplayHUD({ controller, gameId }: ReplayHUDProps) {
   const selectedUnitId = useGameStore((s) => s.selectedUnitId);
   const units = useGameStore((s) => s.units);
   const tileMap = useGameStore((s) => s.tileMap);
+  const gridWidth = useGameStore((s) => s.gridWidth);
+  const gridHeight = useGameStore((s) => s.gridHeight);
   const gameName = game?.name ?? "";
 
   const selectedUnit = useMemo(() => {
@@ -115,14 +119,14 @@ export default function ReplayHUD({ controller, gameId }: ReplayHUDProps) {
     if (!selectedUnit || tileMap.length === 0) return null;
     const ux = selectedUnit.x;
     const uy = selectedUnit.y;
-    if (ux < 0 || ux >= GRID_SIZE || uy < 0 || uy >= GRID_SIZE) return null;
-    const tileType = tileMap[uy * GRID_SIZE + ux] as TileType;
+    if (ux < 0 || ux >= gridWidth || uy < 0 || uy >= gridHeight) return null;
+    const tileType = tileMap[uy * gridWidth + ux] as TileType;
     return {
       type: tileType,
       name: TERRAIN_NAMES[tileType] ?? "Unknown",
       defense: TERRAIN_DEFENSE[tileType] ?? 0,
     };
-  }, [selectedUnit, tileMap]);
+  }, [selectedUnit, tileMap, gridWidth, gridHeight]);
 
   const teamColor = teamName
     ? (PLAYER_COLORS[teamName] ?? "#ffffff")

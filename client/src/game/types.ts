@@ -1,4 +1,3 @@
-export const GRID_SIZE = 20;
 export const TILE_PX = 32;
 
 export const TileType = {
@@ -10,10 +9,20 @@ export const TileType = {
   Road: 5,
   Tree: 6,
   DirtRoad: 7,
-  Barracks: 8,
+  Ocean: 8,
+  Barracks: 9,
 } as const;
 
 export type TileType = (typeof TileType)[keyof typeof TileType];
+
+export const BorderType = {
+  None: 0,
+  Bluff: 1,
+  Cliff: 2,
+  Beach: 3,
+} as const;
+
+export type BorderType = (typeof BorderType)[keyof typeof BorderType];
 
 export const TILE_COLORS: Record<TileType, number> = {
   [TileType.Grass]: 0x4a7c59,
@@ -25,4 +34,5 @@ export const TILE_COLORS: Record<TileType, number> = {
   [TileType.Tree]: 0x2d5a1e,
   [TileType.DirtRoad]: 0x8b7355,
   [TileType.Barracks]: 0x556b2f,
+  [TileType.Ocean]: 0x2389da,
 };

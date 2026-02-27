@@ -8,6 +8,7 @@ target/
 .DS_Store
 *.tsbuildinfo
 
+torii-db/
 torii.db
 torii.db-shm
 torii.db-wal
