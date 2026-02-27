@@ -147,6 +147,7 @@ build_call_for_map() {
       local tile_val=0
       case "$ch" in
         '.') continue ;;
+        'O') continue ;; # Ocean is derived on-chain from border enclosure.
         'M') tile_val=1 ;;
         'C') tile_val=2 ;;
         'F') tile_val=3 ;;
@@ -154,7 +155,6 @@ build_call_for_map() {
         'R') tile_val=5 ;;
         'T') tile_val=6 ;;
         'D') tile_val=7 ;;
-        'O') tile_val=8 ;;
         'b') tile_val=$(( 1 * 16 + 8 )) ;;  # Ocean + Bluff
         'k') tile_val=$(( 2 * 16 + 8 )) ;;  # Ocean + Cliff
         's') tile_val=$(( 3 * 16 + 8 )) ;;  # Ocean + Beach

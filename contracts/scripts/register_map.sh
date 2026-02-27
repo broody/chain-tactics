@@ -69,9 +69,15 @@ fi
 read -ra FIRST_CELLS <<< "${ROWS[0]}"
 WIDTH=${#FIRST_CELLS[@]}
 
-# Build sparse tile values: only non-grass tiles as packed u32 = (index << 8) | type
-TILES=""
+# Build sparse tile runs for register_map_v2:
+# packed run u32 = (start_index << 16) | (run_len << 8) | tile_val
+TILE_RUNS=""
+RUN_COUNT=0
 TILE_COUNT=0
+
+CURRENT_RUN_START=-1
+CURRENT_RUN_LEN=0
+CURRENT_RUN_VAL=0
 
 for (( y=0; y<HEIGHT; y++ )); do
   read -ra CELLS <<< "${ROWS[$y]}"
@@ -83,6 +89,7 @@ for (( y=0; y<HEIGHT; y++ )); do
     CH="${CELLS[$x]}"
     case "$CH" in
       '.') continue ;;
+      'O') continue ;; # Ocean is derived on-chain from border enclosure.
       'M') V=1 ;;
       'C') V=2 ;;
       'F') V=3 ;;
@@ -90,22 +97,49 @@ for (( y=0; y<HEIGHT; y++ )); do
       'R') V=5 ;;
       'T') V=6 ;;
       'D') V=7 ;;
-      'O') V=8 ;;
       'b') V=$(( 1 * 16 + 8 )) ;;  # Ocean + Bluff
       'k') V=$(( 2 * 16 + 8 )) ;;  # Ocean + Cliff
       's') V=$(( 3 * 16 + 8 )) ;;  # Ocean + Beach
       *) echo "Error: unknown tile char '$CH' at ($x,$y)" >&2; exit 1 ;;
     esac
     INDEX=$(( y * WIDTH + x ))
-    PACKED=$(( INDEX * 256 + V ))
-    if [ -z "$TILES" ]; then
-      TILES="$PACKED"
+
+    if [ "$CURRENT_RUN_START" -lt 0 ]; then
+      CURRENT_RUN_START=$INDEX
+      CURRENT_RUN_LEN=1
+      CURRENT_RUN_VAL=$V
+    elif [ "$V" -eq "$CURRENT_RUN_VAL" ] \
+      && [ "$INDEX" -eq $(( CURRENT_RUN_START + CURRENT_RUN_LEN )) ] \
+      && [ "$CURRENT_RUN_LEN" -lt 255 ]; then
+      CURRENT_RUN_LEN=$(( CURRENT_RUN_LEN + 1 ))
     else
-      TILES="$TILES $PACKED"
+      PACKED_RUN=$(( CURRENT_RUN_START * 65536 + CURRENT_RUN_LEN * 256 + CURRENT_RUN_VAL ))
+      if [ -z "$TILE_RUNS" ]; then
+        TILE_RUNS="$PACKED_RUN"
+      else
+        TILE_RUNS="$TILE_RUNS $PACKED_RUN"
+      fi
+      RUN_COUNT=$(( RUN_COUNT + 1 ))
+
+      CURRENT_RUN_START=$INDEX
+      CURRENT_RUN_LEN=1
+      CURRENT_RUN_VAL=$V
     fi
+
     TILE_COUNT=$(( TILE_COUNT + 1 ))
   done
 done
+
+# Flush the final run if present.
+if [ "$CURRENT_RUN_START" -ge 0 ]; then
+  PACKED_RUN=$(( CURRENT_RUN_START * 65536 + CURRENT_RUN_LEN * 256 + CURRENT_RUN_VAL ))
+  if [ -z "$TILE_RUNS" ]; then
+    TILE_RUNS="$PACKED_RUN"
+  else
+    TILE_RUNS="$TILE_RUNS $PACKED_RUN"
+  fi
+  RUN_COUNT=$(( RUN_COUNT + 1 ))
+fi
 
 # ============================================================================
 # Parse buildings (optional)
@@ -182,16 +216,16 @@ fi
 # Register
 # ============================================================================
 
-echo "Map '$MAP_NAME': ${WIDTH}x${HEIGHT}, ${TILE_COUNT} tiles, ${BUILDING_COUNT} buildings, ${UNIT_COUNT} units"
+echo "Map '$MAP_NAME': ${WIDTH}x${HEIGHT}, ${TILE_COUNT} tiles compressed into ${RUN_COUNT} runs, ${BUILDING_COUNT} buildings, ${UNIT_COUNT} units"
 
 PROFILE_ARGS=()
 if [ -n "$PROFILE" ]; then
   PROFILE_ARGS=(--profile "$PROFILE")
 fi
 
-sozo execute --wait ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} hashfront-actions register_map \
+sozo execute --wait ${PROFILE_ARGS[@]:+"${PROFILE_ARGS[@]}"} hashfront-actions register_map_v2 \
   str:"$MAP_NAME" \
   $WIDTH $HEIGHT \
-  $TILE_COUNT $TILES \
+  $RUN_COUNT $TILE_RUNS \
   $BUILDING_COUNT $BUILDINGS \
   $UNIT_COUNT $UNITS

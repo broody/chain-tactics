@@ -294,7 +294,6 @@ fn test_ground_units_move_adjacent_to_ocean() {
 // ─────────────────────────────────────────
 
 #[test]
-#[should_panic(expected: ('Ocean adj land needs border', 'ENTRYPOINT_FAILED'))]
 #[available_gas(200000000)]
 fn test_ocean_adjacent_land_must_have_border() {
     let p1 = PLAYER1();
@@ -303,7 +302,7 @@ fn test_ocean_adjacent_land_must_have_border() {
 
     let (actions, _) = setup();
 
-    // Ocean at (3,0) with BorderType::None — adjacent to grass, should panic
+    // Ocean at (3,0) with BorderType::None is valid under derived-ocean semantics.
     let tiles: Array<u32> = array![
         0 * 256 + 4, // HQ @ (0,0)
         99 * 256 + 4, // HQ @ (9,9)
@@ -316,7 +315,8 @@ fn test_ocean_adjacent_land_must_have_border() {
         1 * 16777216 + 1 * 65536 + 1 * 256 + 0, 2 * 16777216 + 1 * 65536 + 8 * 256 + 9,
     ];
 
-    actions.register_map("bad_border", 10, 10, tiles, buildings, units);
+    let map_id = actions.register_map("bad_border", 10, 10, tiles, buildings, units);
+    assert(map_id == 1, 'map should register');
 }
 
 #[test]
@@ -356,9 +356,7 @@ fn test_interior_ocean_no_border_ok() {
     let buildings: Array<u32> = array![
         1 * 16777216 + 3 * 65536 + 0 * 256 + 0, 2 * 16777216 + 3 * 65536 + 9 * 256 + 9,
     ];
-    let units: Array<u32> = array![
-        1 * 16777216 + 1 * 65536 + 1 * 256 + 0, 2 * 16777216 + 1 * 65536 + 8 * 256 + 9,
-    ];
+    let units: Array<u32> = array![];
 
     // Should succeed — interior ocean (4,2) has no border, which is fine
     actions.register_map("interior_ok", 10, 10, tiles, buildings, units);

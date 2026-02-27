@@ -34,12 +34,13 @@
   "contracts": [
     {
       "address": "0x108fb3acfc928a8149f4d2ce7fbeb8a0e6f8379313ed3b43406cceface03253",
-      "class_hash": "0x4dbe01a0dd815f6af98856ab3a1aaf95b9d3d949feda51675e403832a4ca1bf",
+      "class_hash": "0x24522eedaae92957b8c8163387341f1cd4bd864894d5557aeadf3c484f7aa33",
       "init_calldata": [],
       "tag": "hashfront-actions",
       "selector": "0x8b04e6669a8a23a1c372cc7c4078e7cea1d7e35253b6a592e2393a823fb26d",
       "systems": [
         "register_map",
+        "register_map_v2",
         "create_game",
         "join_game",
         "move_unit",
@@ -4086,6 +4087,42 @@
             },
             {
               "name": "tiles",
+              "type": "core::array::Array::<core::integer::u32>"
+            },
+            {
+              "name": "buildings",
+              "type": "core::array::Array::<core::integer::u32>"
+            },
+            {
+              "name": "units",
+              "type": "core::array::Array::<core::integer::u32>"
+            }
+          ],
+          "outputs": [
+            {
+              "type": "core::integer::u8"
+            }
+          ],
+          "state_mutability": "external"
+        },
+        {
+          "type": "function",
+          "name": "register_map_v2",
+          "inputs": [
+            {
+              "name": "name",
+              "type": "core::byte_array::ByteArray"
+            },
+            {
+              "name": "width",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "height",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "tile_runs",
               "type": "core::array::Array::<core::integer::u32>"
             },
             {

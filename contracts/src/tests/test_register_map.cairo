@@ -1,5 +1,5 @@
 use dojo::model::ModelStorage;
-use hashfront::models::map::{MapInfo, MapTileSeq, MapUnit};
+use hashfront::models::map::{MapInfo, MapTile, MapUnit};
 use hashfront::systems::actions::IActionsDispatcherTrait;
 use hashfront::types::{TileType, UnitType};
 use starknet::testing::{set_account_contract_address, set_contract_address};
@@ -29,12 +29,12 @@ fn test_register_map() {
     assert(info.building_count == 2, 'wrong building_count');
     assert(info.unit_count == 2, 'wrong unit_count');
 
-    // Verify HQ tiles were written (keyed by seq)
-    let hq_tile: MapTileSeq = world.read_model((map_id, 0_u16));
+    // Verify HQ tiles were written (keyed by position)
+    let hq_tile: MapTile = world.read_model((map_id, 0_u8, 0_u8));
     assert(hq_tile.x == 0 && hq_tile.y == 0, 'first tile should be 0,0');
     assert(hq_tile.tile_type == TileType::HQ, 'first tile should be HQ');
 
-    let hq_tile2: MapTileSeq = world.read_model((map_id, 1_u16));
+    let hq_tile2: MapTile = world.read_model((map_id, 19_u8, 19_u8));
     assert(hq_tile2.x == 19 && hq_tile2.y == 19, 'second tile should be 19,19');
     assert(hq_tile2.tile_type == TileType::HQ, 'second tile should be HQ');
 
@@ -80,28 +80,28 @@ fn test_register_map_with_mixed_tiles() {
     let map_id = actions_dispatcher
         .register_map("test", 20, 20, tiles, build_test_buildings(), units);
 
-    // Verify stored tiles by seq
-    let t0: MapTileSeq = world.read_model((map_id, 0_u16));
+    // Verify stored tiles by position
+    let t0: MapTile = world.read_model((map_id, 0_u8, 0_u8));
     assert(t0.x == 0 && t0.y == 0, 'idx 0');
     assert(t0.tile_type == TileType::HQ, 'should be HQ');
 
-    let t1: MapTileSeq = world.read_model((map_id, 1_u16));
+    let t1: MapTile = world.read_model((map_id, 1_u8, 0_u8));
     assert(t1.x == 1 && t1.y == 0, 'idx 1');
     assert(t1.tile_type == TileType::Mountain, 'should be Mountain');
 
-    let t2: MapTileSeq = world.read_model((map_id, 2_u16));
+    let t2: MapTile = world.read_model((map_id, 2_u8, 0_u8));
     assert(t2.x == 2 && t2.y == 0, 'idx 2');
     assert(t2.tile_type == TileType::Factory, 'should be Factory');
 
-    let t3: MapTileSeq = world.read_model((map_id, 3_u16));
+    let t3: MapTile = world.read_model((map_id, 3_u8, 0_u8));
     assert(t3.x == 3 && t3.y == 0, 'idx 3');
     assert(t3.tile_type == TileType::City, 'should be City');
 
-    let t4: MapTileSeq = world.read_model((map_id, 4_u16));
+    let t4: MapTile = world.read_model((map_id, 4_u8, 0_u8));
     assert(t4.x == 4 && t4.y == 0, 'idx 4');
     assert(t4.tile_type == TileType::Road, 'should be Road');
 
-    let t5: MapTileSeq = world.read_model((map_id, 5_u16));
+    let t5: MapTile = world.read_model((map_id, 5_u8, 0_u8));
     assert(t5.x == 5 && t5.y == 0, 'idx 5');
     assert(t5.tile_type == TileType::Tree, 'should be Tree');
 
@@ -111,6 +111,48 @@ fn test_register_map_with_mixed_tiles() {
     assert(u1.unit_type == UnitType::Tank, 'u1 should be Tank');
     assert(u1.x == 18, 'u1 x');
     assert(u1.y == 19, 'u1 y');
+}
+
+#[test]
+#[available_gas(200000000)]
+fn test_register_map_v2_with_runs() {
+    let caller = PLAYER1();
+    set_contract_address(caller);
+    set_account_contract_address(caller);
+
+    let (actions_dispatcher, mut world) = setup();
+
+    // Run encoding: (start_index << 16) | (run_len << 8) | tile_val
+    let tile_runs: Array<u32> = array![
+        0 * 65536 + 1 * 256 + 4, // index 0: HQ
+        1 * 65536 + 3 * 256 + 1, // indices 1..3: Mountain
+        399 * 65536 + 1 * 256 + 4 // index 399: HQ
+    ];
+
+    let map_id = actions_dispatcher
+        .register_map_v2("test_v2", 20, 20, tile_runs, build_test_buildings(), build_test_units());
+    assert(map_id == 1, 'map_id should be 1');
+
+    let info: MapInfo = world.read_model(map_id);
+    assert(info.tile_count == 5, 'wrong tile_count');
+    assert(info.building_count == 2, 'wrong building_count');
+    assert(info.unit_count == 2, 'wrong unit_count');
+
+    let t0: MapTile = world.read_model((map_id, 0_u8, 0_u8));
+    assert(t0.x == 0 && t0.y == 0, 'idx 0');
+    assert(t0.tile_type == TileType::HQ, 'idx 0 should be HQ');
+
+    let t1: MapTile = world.read_model((map_id, 1_u8, 0_u8));
+    assert(t1.x == 1 && t1.y == 0, 'idx 1');
+    assert(t1.tile_type == TileType::Mountain, 'idx 1 should be Mountain');
+
+    let t2: MapTile = world.read_model((map_id, 2_u8, 0_u8));
+    assert(t2.x == 2 && t2.y == 0, 'idx 2');
+    assert(t2.tile_type == TileType::Mountain, 'idx 2 should be Mountain');
+
+    let t3: MapTile = world.read_model((map_id, 3_u8, 0_u8));
+    assert(t3.x == 3 && t3.y == 0, 'idx 3');
+    assert(t3.tile_type == TileType::Mountain, 'idx 3 should be Mountain');
 }
 
 #[test]

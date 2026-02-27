@@ -11,6 +11,15 @@ pub trait IActions<T> {
         buildings: Array<u32>,
         units: Array<u32>,
     ) -> u8;
+    fn register_map_v2(
+        ref self: T,
+        name: ByteArray,
+        width: u8,
+        height: u8,
+        tile_runs: Array<u32>,
+        buildings: Array<u32>,
+        units: Array<u32>,
+    ) -> u8;
     fn create_game(
         ref self: T, name: ByteArray, map_id: u8, player_id: u8, is_test_mode: bool,
     ) -> u32;
@@ -41,7 +50,7 @@ pub mod actions {
     use hashfront::helpers::{combat, game as game_helpers, map as map_helpers, stats, unit_stats};
     use hashfront::models::building::Building;
     use hashfront::models::game::{Game, GameCounter};
-    use hashfront::models::map::{MapBuilding, MapInfo, MapTile, MapTileSeq, MapUnit};
+    use hashfront::models::map::{MapBuilding, MapInfo, MapTile, MapUnit};
     use hashfront::models::player::{PlayerHQ, PlayerState};
     use hashfront::models::unit::{Unit, UnitImpl, UnitPosition};
     use hashfront::types::{BorderType, BuildingType, GameState, TileType, UnitType, Vec2};
@@ -69,7 +78,6 @@ pub mod actions {
 
             let total: u32 = width.into() * height.into();
             let tile_span = tiles.span();
-            let tile_count: u16 = tile_span.len().try_into().unwrap();
             let building_span = buildings.span();
             let building_count: u16 = building_span.len().try_into().unwrap();
             let unit_span = units.span();
@@ -85,7 +93,7 @@ pub mod actions {
             let ocean_tile_type: u8 = TileType::Ocean.into();
             let mut tile_type_by_index: Felt252Dict<u8> = Default::default();
 
-            // Validate tile payload and cache final tile types in-memory by grid index.
+            // Validate payload and cache explicit tiles by index.
             // Packing: packed = grid_index * 256 + tile_val
             // tile_val = (border_type << 4) | tile_type
             let mut i: u32 = 0;
@@ -110,59 +118,8 @@ pub mod actions {
                 i += 1;
             }
 
-            // Validate: ocean tiles adjacent to non-ocean must have a border_type
-            let mut v: u32 = 0;
-            while v < tile_span.len() {
-                let packed: u32 = *tile_span.at(v);
-                let tile_val: u8 = (packed % 256).try_into().unwrap();
-                let tile_type_val: u8 = tile_val % 16;
-
-                if tile_type_val == ocean_tile_type {
-                    let grid_index: u16 = (packed / 256).try_into().unwrap();
-                    let (x, y) = map_helpers::index_to_xy(grid_index, width);
-                    let border_type: BorderType = (tile_val / 16).into();
-
-                    // Check 4 cardinal neighbors; out-of-bounds counts as ocean
-                    // (map edges are assumed to extend into open ocean)
-                    let mut has_land_neighbor = false;
-                    if x > 0 {
-                        let left_index = map_helpers::xy_to_index(x - 1, y, width);
-                        let left_tile_type: u8 = tile_type_by_index.get(left_index.into());
-                        if left_tile_type != ocean_tile_type {
-                            has_land_neighbor = true;
-                        }
-                    }
-                    if !has_land_neighbor && x + 1 < width {
-                        let right_index = map_helpers::xy_to_index(x + 1, y, width);
-                        let right_tile_type: u8 = tile_type_by_index.get(right_index.into());
-                        if right_tile_type != ocean_tile_type {
-                            has_land_neighbor = true;
-                        }
-                    }
-                    if !has_land_neighbor && y > 0 {
-                        let up_index = map_helpers::xy_to_index(x, y - 1, width);
-                        let up_tile_type: u8 = tile_type_by_index.get(up_index.into());
-                        if up_tile_type != ocean_tile_type {
-                            has_land_neighbor = true;
-                        }
-                    }
-                    if !has_land_neighbor && y + 1 < height {
-                        let down_index = map_helpers::xy_to_index(x, y + 1, width);
-                        let down_tile_type: u8 = tile_type_by_index.get(down_index.into());
-                        if down_tile_type != ocean_tile_type {
-                            has_land_neighbor = true;
-                        }
-                    }
-
-                    if has_land_neighbor {
-                        assert(border_type != BorderType::None, 'Ocean adj land needs border');
-                    }
-                }
-
-                v += 1;
-            }
-
-            // Store tiles after validation.
+            let mut stored_tile_count: u16 = 0;
+            // Persist only explicit non-grass tiles (including bordered coast markers).
             let mut t: u32 = 0;
             while t < tile_span.len() {
                 let packed: u32 = *tile_span.at(t);
@@ -172,9 +129,8 @@ pub mod actions {
                 let border_type: BorderType = (tile_val / 16).into();
 
                 let (x, y) = map_helpers::index_to_xy(grid_index, width);
-                let seq: u16 = t.try_into().unwrap();
                 world.write_model(@MapTile { map_id, x, y, tile_type, border_type });
-                world.write_model(@MapTileSeq { map_id, seq, x, y, tile_type, border_type });
+                stored_tile_count += 1;
 
                 t += 1;
             }
@@ -250,13 +206,52 @@ pub mod actions {
                         player_count: hq_count,
                         width,
                         height,
-                        tile_count,
+                        tile_count: stored_tile_count,
                         building_count,
                         unit_count,
                     },
                 );
 
             map_id
+        }
+
+        /// Register a map template using compressed tile runs.
+        /// `tile_runs`: packed u32 runs: (start_index << 16) | (run_len << 8) | tile_val.
+        /// `run_len` is 1..255. Expanded per-cell payload is equivalent to `register_map`.
+        fn register_map_v2(
+            ref self: ContractState,
+            name: ByteArray,
+            width: u8,
+            height: u8,
+            tile_runs: Array<u32>,
+            buildings: Array<u32>,
+            units: Array<u32>,
+        ) -> u8 {
+            let total: u32 = width.into() * height.into();
+            let run_span = tile_runs.span();
+            let mut tiles: Array<u32> = array![];
+            let mut i: u32 = 0;
+
+            while i < run_span.len() {
+                let packed_run: u32 = *run_span.at(i);
+                let start_index: u16 = (packed_run / 65536).try_into().unwrap();
+                let run_len: u8 = ((packed_run / 256) % 256).try_into().unwrap();
+                let tile_val: u8 = (packed_run % 256).try_into().unwrap();
+
+                assert(run_len > 0, 'Run length must be > 0');
+                let mut j: u8 = 0;
+                while j < run_len {
+                    let grid_index: u16 = start_index + j.into();
+                    assert(grid_index.into() < total, 'Run out of bounds');
+                    let packed_tile: u32 = grid_index.into() * 256 + tile_val.into();
+                    tiles.append(packed_tile);
+                    j += 1;
+                }
+
+                i += 1;
+            }
+
+            self.register_map(name, width, height, tiles, buildings, units)
         }
 
         /// Create a new game from a registered map. Copies tiles and buildings into per-game
@@ -959,17 +954,146 @@ pub mod actions {
             let map_info: MapInfo = world.read_model(map_id);
             assert(map_info.tile_count > 0, 'Map not registered');
 
+            let ocean_tile_type: u8 = TileType::Ocean.into();
+            let mut bordered_ocean_by_index: Felt252Dict<u8> = Default::default();
+            let mut outside_ocean_by_index: Felt252Dict<u8> = Default::default();
+            let mut has_bordered_ocean = false;
+
+            // Detect bordered ocean markers that define coastline barriers.
+            let mut y_scan: u8 = 0;
+            while y_scan < map_info.height {
+                let mut x_scan: u8 = 0;
+                while x_scan < map_info.width {
+                    let map_tile: MapTile = world.read_model((map_id, x_scan, y_scan));
+                    let tile_type_val: u8 = map_tile.tile_type.into();
+                    let border_type_val: u8 = map_tile.border_type.into();
+                    if tile_type_val == ocean_tile_type && border_type_val != 0 {
+                        has_bordered_ocean = true;
+                        let index = map_helpers::xy_to_index(x_scan, y_scan, map_info.width);
+                        bordered_ocean_by_index.insert(index.into(), 1);
+                    }
+                    x_scan += 1;
+                }
+                y_scan += 1;
+            }
+
+            if has_bordered_ocean {
+                let mut flood_queue: Array<u16> = array![];
+
+                let mut seed_x: u8 = 0;
+                while seed_x < map_info.width {
+                    let top_index = map_helpers::xy_to_index(seed_x, 0, map_info.width);
+                    if bordered_ocean_by_index.get(top_index.into()) == 0 {
+                        if outside_ocean_by_index.get(top_index.into()) == 0 {
+                            outside_ocean_by_index.insert(top_index.into(), 1);
+                            flood_queue.append(top_index);
+                        }
+                    }
+
+                    if map_info.height > 1 {
+                        let bottom_y = map_info.height - 1;
+                        let bottom_index = map_helpers::xy_to_index(
+                            seed_x, bottom_y, map_info.width,
+                        );
+                        if bordered_ocean_by_index.get(bottom_index.into()) == 0 {
+                            if outside_ocean_by_index.get(bottom_index.into()) == 0 {
+                                outside_ocean_by_index.insert(bottom_index.into(), 1);
+                                flood_queue.append(bottom_index);
+                            }
+                        }
+                    }
+                    seed_x += 1;
+                }
+
+                let mut seed_y: u8 = 0;
+                while seed_y < map_info.height {
+                    let left_index = map_helpers::xy_to_index(0, seed_y, map_info.width);
+                    if bordered_ocean_by_index.get(left_index.into()) == 0 {
+                        if outside_ocean_by_index.get(left_index.into()) == 0 {
+                            outside_ocean_by_index.insert(left_index.into(), 1);
+                            flood_queue.append(left_index);
+                        }
+                    }
+
+                    if map_info.width > 1 {
+                        let right_x = map_info.width - 1;
+                        let right_index = map_helpers::xy_to_index(right_x, seed_y, map_info.width);
+                        if bordered_ocean_by_index.get(right_index.into()) == 0 {
+                            if outside_ocean_by_index.get(right_index.into()) == 0 {
+                                outside_ocean_by_index.insert(right_index.into(), 1);
+                                flood_queue.append(right_index);
+                            }
+                        }
+                    }
+                    seed_y += 1;
+                }
+
+                let mut head: u32 = 0;
+                while head < flood_queue.span().len() {
+                    let current_index: u16 = *flood_queue.at(head);
+                    let (cx, cy) = map_helpers::index_to_xy(current_index, map_info.width);
+
+                    if cx > 0 {
+                        let next_index = map_helpers::xy_to_index(cx - 1, cy, map_info.width);
+                        if bordered_ocean_by_index.get(next_index.into()) == 0
+                            && outside_ocean_by_index.get(next_index.into()) == 0 {
+                            outside_ocean_by_index.insert(next_index.into(), 1);
+                            flood_queue.append(next_index);
+                        }
+                    }
+                    if cx + 1 < map_info.width {
+                        let next_index = map_helpers::xy_to_index(cx + 1, cy, map_info.width);
+                        if bordered_ocean_by_index.get(next_index.into()) == 0
+                            && outside_ocean_by_index.get(next_index.into()) == 0 {
+                            outside_ocean_by_index.insert(next_index.into(), 1);
+                            flood_queue.append(next_index);
+                        }
+                    }
+                    if cy > 0 {
+                        let next_index = map_helpers::xy_to_index(cx, cy - 1, map_info.width);
+                        if bordered_ocean_by_index.get(next_index.into()) == 0
+                            && outside_ocean_by_index.get(next_index.into()) == 0 {
+                            outside_ocean_by_index.insert(next_index.into(), 1);
+                            flood_queue.append(next_index);
+                        }
+                    }
+                    if cy + 1 < map_info.height {
+                        let next_index = map_helpers::xy_to_index(cx, cy + 1, map_info.width);
+                        if bordered_ocean_by_index.get(next_index.into()) == 0
+                            && outside_ocean_by_index.get(next_index.into()) == 0 {
+                            outside_ocean_by_index.insert(next_index.into(), 1);
+                            flood_queue.append(next_index);
+                        }
+                    }
+
+                    head += 1;
+                }
+            }
+
             let mut tiles: Array<u32> = array![];
-            let mut i: u16 = 0;
-            while i < map_info.tile_count {
-                let map_tile: MapTileSeq = world.read_model((map_id, i));
-                let tile_type_val: u8 = map_tile.tile_type.into();
-                let border_type_val: u8 = map_tile.border_type.into();
-                let tile_val: u8 = border_type_val * 16 + tile_type_val;
-                let index = map_helpers::xy_to_index(map_tile.x, map_tile.y, map_info.width);
-                let packed: u32 = index.into() * 256 + tile_val.into();
-                tiles.append(packed);
-                i += 1;
+            let mut y: u8 = 0;
+            while y < map_info.height {
+                let mut x: u8 = 0;
+                while x < map_info.width {
+                    let map_tile: MapTile = world.read_model((map_id, x, y));
+                    if map_tile.tile_type != TileType::Grass {
+                        let tile_type_val: u8 = map_tile.tile_type.into();
+                        let border_type_val: u8 = map_tile.border_type.into();
+                        let tile_val: u8 = border_type_val * 16 + tile_type_val;
+                        let index = map_helpers::xy_to_index(x, y, map_info.width);
+                        let packed: u32 = index.into() * 256 + tile_val.into();
+                        tiles.append(packed);
+                    } else if has_bordered_ocean {
+                        let index = map_helpers::xy_to_index(x, y, map_info.width);
+                        if outside_ocean_by_index.get(index.into()) != 0 {
+                            let tile_val: u8 = ocean_tile_type;
+                            let packed: u32 = index.into() * 256 + tile_val.into();
+                            tiles.append(packed);
+                        }
+                    }
+                    x += 1;
+                }
+                y += 1;
             }
 
             (map_info.width, map_info.height, tiles)
