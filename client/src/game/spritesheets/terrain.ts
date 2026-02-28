@@ -168,10 +168,10 @@ export const terrainAtlas = {
       frame: { x: TILE * 2, y: TILE * 3, w: TILE, h: TILE },
     },
     cliff_cove_parallel_vertical: {
-      frame: { x: TILE * 5, y: TILE, w: TILE, h: TILE },
+      frame: { x: TILE * 3, y: TILE * 3, w: TILE, h: TILE },
     },
     cliff_cove_parallel_horizontal: {
-      frame: { x: TILE * 3, y: TILE * 3, w: TILE, h: TILE },
+      frame: { x: TILE * 5, y: TILE, w: TILE, h: TILE },
     },
     cliff_cove_enclosed: {
       frame: { x: TILE * 5, y: TILE * 3, w: TILE, h: TILE },

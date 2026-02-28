@@ -1330,19 +1330,12 @@ export default function Lobby() {
                   NEW
                 </span>
               </Link>
-              <a
-                href="#"
-                className="hover:translate-x-2 transition-transform opacity-50 cursor-not-allowed flex items-center gap-2"
-                onClick={(e) => {
-                  e.preventDefault();
-                  toast("Access denied", "error");
-                }}
+              <Link
+                to="/editor"
+                className="hover:translate-x-2 transition-transform flex items-center gap-2 text-blue-400"
               >
-                <span>&gt;</span> MAP_EDITOR{" "}
-                <span className="text-[10px] border border-white/30 px-1">
-                  LOCKED
-                </span>
-              </a>
+                <span>&gt;</span> MAP_EDITOR
+              </Link>
             </div>
           </PixelPanel>
 

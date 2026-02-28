@@ -281,11 +281,19 @@ export default function GameViewport({ onLoaded }: { onLoaded?: () => void }) {
       const landLeft = !isOceanOrOOB(x - 1, y);
       const landRight = !isOceanOrOOB(x + 1, y);
 
+      // Enclosed - 4 cardinal land neighbors
+      if (landUp && landDown && landLeft && landRight)
+        return `${prefix}_cove_enclosed`;
+
       // Cove — 3 cardinal land neighbors, ocean opens to one side
       if (landDown && landLeft && landRight) return `${prefix}_cove_top`;
       if (landUp && landLeft && landRight) return `${prefix}_cove_bottom`;
       if (landUp && landDown && landRight) return `${prefix}_cove_left`;
       if (landUp && landDown && landLeft) return `${prefix}_cove_right`;
+
+      // Parallel - 2 opposite cardinal land neighbors
+      if (landUp && landDown) return `${prefix}_cove_parallel_vertical`;
+      if (landLeft && landRight) return `${prefix}_cove_parallel_horizontal`;
 
       // Inner corners — ocean concave: two adjacent cardinal neighbors are land
       if (landUp && landLeft) return `${prefix}_inner_top_left`;

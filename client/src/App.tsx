@@ -8,6 +8,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Lobby from "./pages/Lobby";
 import Profile from "./pages/Profile";
 import LogoGallery from "./pages/LogoGallery";
+import MapEditor from "./pages/MapEditor";
 import { ToastProvider } from "./components/Toast";
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/player/:address" element={<Profile />} />
                 <Route path="/logo-gallery" element={<LogoGallery />} />
+                <Route path="/editor" element={<MapEditor />} />
               </Routes>
               {/* <MusicPlayer /> */}
             </BrowserRouter>
