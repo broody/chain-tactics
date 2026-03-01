@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { BlueprintContainer } from "../components/BlueprintContainer";
 import { PixelPanel } from "../components/PixelPanel";
 import { PixelButton } from "../components/PixelButton";
-import { useToast } from "../components/Toast";
-import { terrainAtlas } from "../game/spritesheets/terrain";
+import {
+  terrainAtlas,
+} from "../game/spritesheets/terrain";
 import {
   Application,
   Assets,
@@ -67,18 +68,9 @@ const loadSavedState = (): EditorState | null => {
 };
 
 export default function MapEditor() {
-  const { toast } = useToast();
   const [savedState] = useState(() => loadSavedState());
 
-  useEffect(() => {
-    if (savedState) {
-      toast("Restored map from auto-save", "info");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const [mapData, setMapData] = useState<EditorState>(() => ({
-    width: savedState?.width || 20,
+  const [mapData, setMapData] = useState<EditorState>(() => ({    width: savedState?.width || 20,
     height: savedState?.height || 20,
     terrain:
       savedState?.terrain ||
@@ -150,22 +142,25 @@ export default function MapEditor() {
 
   const handleResize = (newW: number, newH: number) => {
     saveState();
+    const finalW = Math.min(40, Math.max(1, newW));
+    const finalH = Math.min(40, Math.max(1, newH));
+
     setMapData((prev) => {
-      const newTerrain = Array(newH)
+      const newTerrain = Array(finalH)
         .fill(null)
-        .map(() => Array(newW).fill("O"));
-      for (let y = 0; y < Math.min(prev.height, newH); y++) {
-        for (let x = 0; x < Math.min(prev.width, newW); x++) {
+        .map(() => Array(finalW).fill("O"));
+      for (let y = 0; y < Math.min(prev.height, finalH); y++) {
+        for (let x = 0; x < Math.min(prev.width, finalW); x++) {
           newTerrain[y][x] = prev.terrain[y][x];
         }
       }
       return {
         ...prev,
-        width: newW,
-        height: newH,
+        width: finalW,
+        height: finalH,
         terrain: newTerrain,
-        buildings: prev.buildings.filter((b) => b.x < newW && b.y < newH),
-        units: prev.units.filter((u) => u.x < newW && u.y < newH),
+        buildings: prev.buildings.filter((b) => b.x < finalW && b.y < finalH),
+        units: prev.units.filter((u) => u.x < finalW && u.y < finalH),
       };
     });
   };
@@ -232,6 +227,139 @@ export default function MapEditor() {
       units: [],
     }));
     setIsResetModalOpen(false);
+  };
+
+  const handleRandomize = () => {
+    saveState();
+    const seed = Math.floor(Math.random() * 1000000);
+    const newTerrain = generateRandomMap(width, height, seed);
+    setMapData((prev) => ({
+      ...prev,
+      terrain: newTerrain,
+      buildings: [],
+      units: [],
+    }));
+  };
+
+  const generateRandomMap = (w: number, h: number, seed: number) => {
+    // Simple Seeded Random
+    let s = seed;
+    const rand = () => {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+
+    let newTerrain = Array(h)
+      .fill(null)
+      .map(() => Array(w).fill("O"));
+
+    // 1. Initial random noise for land (only in middle)
+    // Start with slightly higher chance because smoothing and edge-avoidance will reduce it
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        // ~55% land initially to target ~50% after smoothing
+        if (rand() < 0.55) {
+          newTerrain[y][x] = ".";
+        }
+      }
+    }
+
+    // 2. Cellular Automata passes to create islands and channels
+    const smooth = (map: string[][]) => {
+      const next = map.map((row) => [...row]);
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          let landNeighbors = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              if (map[y + dy][x + dx] === ".") landNeighbors++;
+            }
+          }
+          if (map[y][x] === ".") {
+            next[y][x] = landNeighbors >= 4 ? "." : "O";
+          } else {
+            next[y][x] = landNeighbors >= 5 ? "." : "O";
+          }
+        }
+      }
+      return next;
+    };
+
+    // 4 passes of smoothing for more solid landmasses
+    for (let i = 0; i < 4; i++) {
+      newTerrain = smooth(newTerrain);
+    }
+
+    // 3. Ensure some connectivity / blobs
+    const addBlobs = (char: string, count: number, size: number) => {
+      for (let i = 0; i < count; i++) {
+        // Only place on existing land
+        let rx, ry;
+        let attempts = 0;
+        do {
+          rx = Math.floor(rand() * (w - 2)) + 1;
+          ry = Math.floor(rand() * (h - 2)) + 1;
+          attempts++;
+        } while (newTerrain[ry][rx] !== "." && attempts < 50);
+
+        if (newTerrain[ry][rx] !== ".") continue;
+
+        const blobSize = Math.floor(rand() * size) + 2;
+        for (let j = 0; j < blobSize; j++) {
+          if (rx > 0 && rx < w - 1 && ry > 0 && ry < h - 1) {
+            if (newTerrain[ry][rx] === ".") {
+              newTerrain[ry][rx] = char;
+            }
+          }
+          const dir = Math.floor(rand() * 4);
+          if (dir === 0) rx++;
+          else if (dir === 1) rx--;
+          else if (dir === 2) ry++;
+          else ry--;
+        }
+      }
+    };
+
+    const drawPath = (char: string, steps: number) => {
+      let rx = Math.floor(rand() * (w - 2)) + 1;
+      let ry = Math.floor(rand() * (h - 2)) + 1;
+      let dir = Math.floor(rand() * 4); // 0:R, 1:L, 2:D, 3:U
+
+      for (let i = 0; i < steps; i++) {
+        if (rx > 0 && rx < w - 1 && ry > 0 && ry < h - 1) {
+          if (newTerrain[ry][rx] === "." || newTerrain[ry][rx] === "D" || newTerrain[ry][rx] === "R") {
+            newTerrain[ry][rx] = char;
+          }
+        }
+        
+        // 80% chance to keep same direction
+        if (rand() < 0.20) {
+          dir = Math.floor(rand() * 4);
+        }
+
+        if (dir === 0) rx++;
+        else if (dir === 1) rx--;
+        else if (dir === 2) ry++;
+        else ry--;
+
+        // Bounce off edges
+        if (rx <= 0 || rx >= w - 1 || ry <= 0 || ry >= h - 1) {
+          rx = Math.max(1, Math.min(w - 2, rx));
+          ry = Math.max(1, Math.min(h - 2, ry));
+          dir = Math.floor(rand() * 4);
+        }
+      }
+    };
+
+    addBlobs("M", Math.floor((w * h) / 100), 4); // Mountains
+    addBlobs("T", Math.floor((w * h) / 80), 6); // Trees
+    
+    // One main road of each type to keep it clean
+    drawPath("R", Math.floor((w + h) * 1.5)); // Standard road
+    drawPath("D", Math.floor((w + h) * 1.5)); // Dirt path
+
+    return newTerrain;
   };
 
   const mapDataRef = useRef(mapData);
@@ -507,7 +635,6 @@ export default function MapEditor() {
     download("terrain.txt", terrainText);
     if (buildingsText) download("buildings.txt", buildingsText);
     if (unitsText) download("units.txt", unitsText);
-    toast("Map files downloaded", "success");
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1041,10 +1168,12 @@ export default function MapEditor() {
           title="EDITOR_TOOLS"
         >
           <div>
-            <div className="text-xs mb-2 opacity-50">DIMENSIONS</div>
+            <div className="text-xs mb-2 opacity-50">DIMENSIONS (MAX 40)</div>
             <div className="flex gap-2 mb-2 text-sm">
               <input
                 type="number"
+                min="1"
+                max="40"
                 className="w-16 bg-transparent border border-white/30 text-center"
                 value={width}
                 onChange={(e) =>
@@ -1054,6 +1183,8 @@ export default function MapEditor() {
               <span className="self-center">x</span>
               <input
                 type="number"
+                min="1"
+                max="40"
                 className="w-16 bg-transparent border border-white/30 text-center"
                 value={height}
                 onChange={(e) =>
@@ -1162,6 +1293,9 @@ export default function MapEditor() {
               className="!border-red-500 !text-red-500 hover:!bg-red-500 hover:!text-black mb-2"
             >
               RESET MAP
+            </PixelButton>
+            <PixelButton onClick={handleRandomize} variant="blue" className="mb-2">
+              RANDOMIZE MAP
             </PixelButton>
             <PixelButton onClick={handleExport} variant="green">
               EXPORT MAP
