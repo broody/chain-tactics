@@ -74,23 +74,22 @@ export default function MapEditor() {
     if (savedState) {
       toast("Restored map from auto-save", "info");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [width, setWidth] = useState(savedState?.width || 20);
-  const [height, setHeight] = useState(savedState?.height || 20);
-
-  const [terrain, setTerrain] = useState<string[][]>(
-    () =>
+  const [mapData, setMapData] = useState<EditorState>(() => ({
+    width: savedState?.width || 20,
+    height: savedState?.height || 20,
+    terrain:
       savedState?.terrain ||
       Array(20)
         .fill(null)
         .map(() => Array(20).fill("O")),
-  );
-  const [buildings, setBuildings] = useState<Building[]>(
-    savedState?.buildings || [],
-  );
-  const [units, setUnits] = useState<Unit[]>(savedState?.units || []);
+    buildings: savedState?.buildings || [],
+    units: savedState?.units || [],
+  }));
+
+  const { width, height, terrain, buildings, units } = mapData;
 
   const [past, setPast] = useState<EditorState[]>([]);
   const [future, setFuture] = useState<EditorState[]>([]);
@@ -103,56 +102,36 @@ export default function MapEditor() {
   const [selectedUnit, setSelectedUnit] = useState("Infantry");
   const [selectedPlayer, setSelectedPlayer] = useState(1);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [hoveredPos, setHoveredPos] = useState<{ x: number; y: number } | null>(
+    null,
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    localStorage.setItem(
-      "hashfront_map_editor",
-      JSON.stringify({ width, height, terrain, buildings, units }),
-    );
-  }, [width, height, terrain, buildings, units]);
+    localStorage.setItem("hashfront_map_editor", JSON.stringify(mapData));
+  }, [mapData]);
 
   const saveState = useCallback(() => {
-    setPast((prev) => [
-      ...prev,
-      {
-        terrain: terrain.map((row) => [...row]),
-        buildings: [...buildings],
-        units: [...units],
-        width,
-        height,
-      },
-    ]);
+    setPast((prev) => [...prev, JSON.parse(JSON.stringify(mapData))]);
     setFuture([]);
-  }, [terrain, buildings, units, width, height]);
+  }, [mapData]);
 
   const undo = useCallback(() => {
     if (past.length === 0) return;
     const previous = past[past.length - 1];
     setPast((prev) => prev.slice(0, prev.length - 1));
-    setFuture((prev) => [
-      { terrain, buildings, units, width, height },
-      ...prev,
-    ]);
-    setTerrain(previous.terrain);
-    setBuildings(previous.buildings);
-    setUnits(previous.units);
-    setWidth(previous.width);
-    setHeight(previous.height);
-  }, [past, terrain, buildings, units, width, height]);
+    setFuture((prev) => [JSON.parse(JSON.stringify(mapData)), ...prev]);
+    setMapData(previous);
+  }, [past, mapData]);
 
   const redo = useCallback(() => {
     if (future.length === 0) return;
     const next = future[0];
     setFuture((prev) => prev.slice(1));
-    setPast((prev) => [...prev, { terrain, buildings, units, width, height }]);
-    setTerrain(next.terrain);
-    setBuildings(next.buildings);
-    setUnits(next.units);
-    setWidth(next.width);
-    setHeight(next.height);
-  }, [future, terrain, buildings, units, width, height]);
+    setPast((prev) => [...prev, JSON.parse(JSON.stringify(mapData))]);
+    setMapData(next);
+  }, [future, mapData]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -171,71 +150,69 @@ export default function MapEditor() {
 
   const handleResize = (newW: number, newH: number) => {
     saveState();
-    setWidth(newW);
-    setHeight(newH);
-    setTerrain((prev) => {
+    setMapData((prev) => {
       const newTerrain = Array(newH)
         .fill(null)
         .map(() => Array(newW).fill("O"));
-      for (let y = 0; y < Math.min(prev.length, newH); y++) {
-        for (let x = 0; x < Math.min(prev[y].length, newW); x++) {
-          if (x > 0 && y > 0 && x < newW - 1 && y < newH - 1)
-            newTerrain[y][x] = prev[y][x];
+      for (let y = 0; y < Math.min(prev.height, newH); y++) {
+        for (let x = 0; x < Math.min(prev.width, newW); x++) {
+          newTerrain[y][x] = prev.terrain[y][x];
         }
       }
-      return newTerrain;
+      return {
+        ...prev,
+        width: newW,
+        height: newH,
+        terrain: newTerrain,
+        buildings: prev.buildings.filter((b) => b.x < newW && b.y < newH),
+        units: prev.units.filter((u) => u.x < newW && u.y < newH),
+      };
     });
-    setBuildings((prev) =>
-      prev.filter(
-        (b) => b.x > 0 && b.y > 0 && b.x < newW - 1 && b.y < newH - 1,
-      ),
-    );
-    setUnits((prev) =>
-      prev.filter(
-        (u) => u.x > 0 && u.y > 0 && u.x < newW - 1 && u.y < newH - 1,
-      ),
-    );
   };
 
   const applyTool = useCallback(
     (x: number, y: number) => {
-      const isEdge = x === 0 || y === 0 || x === width - 1 || y === height - 1;
-      if (toolCategory === "terrain") {
-        if (isEdge && selectedTerrain !== "O") return;
-        setTerrain((prev) => {
-          if (prev[y][x] === selectedTerrain) return prev;
-          const next = [...prev.map((row) => [...row])];
-          next[y][x] = selectedTerrain;
-          return next;
-        });
-      } else if (toolCategory === "building") {
-        if (isEdge) return;
-        setBuildings((prev) => {
-          const next = prev.filter((b) => b.x !== x || b.y !== y);
-          next.push({ type: selectedBuilding, player: selectedPlayer, x, y });
-          return next;
-        });
-      } else if (toolCategory === "unit") {
-        if (isEdge) return;
-        setUnits((prev) => {
-          const next = prev.filter((u) => u.x !== x || u.y !== y);
-          next.push({ type: selectedUnit, player: selectedPlayer, x, y });
-          return next;
-        });
-      } else if (toolCategory === "erase") {
-        setTerrain((prev) => {
-          if (prev[y][x] === "O") return prev;
-          const next = [...prev.map((row) => [...row])];
-          next[y][x] = "O";
-          return next;
-        });
-        setBuildings((prev) => prev.filter((b) => b.x !== x || b.y !== y));
-        setUnits((prev) => prev.filter((u) => u.x !== x || u.y !== y));
-      }
+      setMapData((prev) => {
+        if (x < 0 || x >= prev.width || y < 0 || y >= prev.height) return prev;
+        const isEdge =
+          x === 0 || y === 0 || x === prev.width - 1 || y === prev.height - 1;
+        if (toolCategory === "terrain") {
+          if (isEdge && selectedTerrain !== "O") return prev;
+          if (prev.terrain[y][x] === selectedTerrain) return prev;
+          const nextTerrain = [...prev.terrain.map((row) => [...row])];
+          nextTerrain[y][x] = selectedTerrain;
+          return { ...prev, terrain: nextTerrain };
+        } else if (toolCategory === "building") {
+          if (isEdge) return prev;
+          const nextBuildings = prev.buildings.filter(
+            (b) => b.x !== x || b.y !== y,
+          );
+          nextBuildings.push({
+            type: selectedBuilding,
+            player: selectedPlayer,
+            x,
+            y,
+          });
+          return { ...prev, buildings: nextBuildings };
+        } else if (toolCategory === "unit") {
+          if (isEdge) return prev;
+          const nextUnits = prev.units.filter((u) => u.x !== x || u.y !== y);
+          nextUnits.push({ type: selectedUnit, player: selectedPlayer, x, y });
+          return { ...prev, units: nextUnits };
+        } else if (toolCategory === "erase") {
+          const nextTerrain = [...prev.terrain.map((row) => [...row])];
+          nextTerrain[y][x] = "O";
+          return {
+            ...prev,
+            terrain: nextTerrain,
+            buildings: prev.buildings.filter((b) => b.x !== x || b.y !== y),
+            units: prev.units.filter((u) => u.x !== x || u.y !== y),
+          };
+        }
+        return prev;
+      });
     },
     [
-      width,
-      height,
       toolCategory,
       selectedTerrain,
       selectedBuilding,
@@ -246,40 +223,69 @@ export default function MapEditor() {
 
   const handleReset = () => {
     saveState();
-    setTerrain(
-      Array(height)
+    setMapData((prev) => ({
+      ...prev,
+      terrain: Array(prev.height)
         .fill(null)
-        .map(() => Array(width).fill("O")),
-    );
-    setBuildings([]);
-    setUnits([]);
+        .map(() => Array(prev.width).fill("O")),
+      buildings: [],
+      units: [],
+    }));
     setIsResetModalOpen(false);
   };
 
-  // Autotile logic
+  const mapDataRef = useRef(mapData);
+  useEffect(() => {
+    mapDataRef.current = mapData;
+  }, [mapData]);
+
+  // Autotile logic - updated to use Refs and support preview overrides
   const isTileType = useCallback(
-    (tx: number, ty: number, char: string) => {
-      if (tx < 0 || tx >= width || ty < 0 || ty >= height) return false;
-      return terrain[ty][tx] === char;
+    (
+      tx: number,
+      ty: number,
+      char: string,
+      override?: { x: number; y: number; char: string },
+    ) => {
+      if (override && tx === override.x && ty === override.y)
+        return override.char === char;
+      const { width: w, height: h, terrain: t } = mapDataRef.current;
+      if (tx < 0 || tx >= w || ty < 0 || ty >= h) return false;
+      return t[ty][tx] === char;
     },
-    [terrain, width, height],
+    [],
   );
 
   const isOceanOrOOB = useCallback(
-    (tx: number, ty: number) => {
-      if (tx < 0 || tx >= width || ty < 0 || ty >= height) return true;
-      const char = terrain[ty][tx];
+    (
+      tx: number,
+      ty: number,
+      override?: { x: number; y: number; char: string },
+    ) => {
+      if (override && tx === override.x && ty === override.y) {
+        const c = override.char;
+        return c === "O" || c === "k" || c === "b" || c === "s";
+      }
+      const { width: w, height: h, terrain: t } = mapDataRef.current;
+      if (tx < 0 || tx >= w || ty < 0 || ty >= h) return true;
+      const char = t[ty][tx];
       return char === "O" || char === "k" || char === "b" || char === "s";
     },
-    [terrain, width, height],
+    [],
   );
 
   const pickAutotile = useCallback(
-    (tx: number, ty: number, char: string, prefix: string) => {
-      const left = isTileType(tx - 1, ty, char);
-      const right = isTileType(tx + 1, ty, char);
-      const up = isTileType(tx, ty - 1, char);
-      const down = isTileType(tx, ty + 1, char);
+    (
+      tx: number,
+      ty: number,
+      char: string,
+      prefix: string,
+      override?: { x: number; y: number; char: string },
+    ) => {
+      const left = isTileType(tx - 1, ty, char, override);
+      const right = isTileType(tx + 1, ty, char, override);
+      const up = isTileType(tx, ty - 1, char, override);
+      const down = isTileType(tx, ty + 1, char, override);
       const horizontal = left || right;
       const vertical = up || down;
 
@@ -309,11 +315,16 @@ export default function MapEditor() {
   );
 
   const pickOceanBorder = useCallback(
-    (tx: number, ty: number, prefix: string) => {
-      const landUp = !isOceanOrOOB(tx, ty - 1);
-      const landDown = !isOceanOrOOB(tx, ty + 1);
-      const landLeft = !isOceanOrOOB(tx - 1, ty);
-      const landRight = !isOceanOrOOB(tx + 1, ty);
+    (
+      tx: number,
+      ty: number,
+      prefix: string,
+      override?: { x: number; y: number; char: string },
+    ) => {
+      const landUp = !isOceanOrOOB(tx, ty - 1, override);
+      const landDown = !isOceanOrOOB(tx, ty + 1, override);
+      const landLeft = !isOceanOrOOB(tx - 1, ty, override);
+      const landRight = !isOceanOrOOB(tx + 1, ty, override);
 
       if (landUp && landDown && landLeft && landRight)
         return `${prefix}_cove_enclosed`;
@@ -342,20 +353,25 @@ export default function MapEditor() {
   );
 
   const pickOceanOuterCorners = useCallback(
-    (tx: number, ty: number, prefix: string) => {
+    (
+      tx: number,
+      ty: number,
+      prefix: string,
+      override?: { x: number; y: number; char: string },
+    ) => {
       const corners = [];
-      const landUp = !isOceanOrOOB(tx, ty - 1);
-      const landDown = !isOceanOrOOB(tx, ty + 1);
-      const landLeft = !isOceanOrOOB(tx - 1, ty);
-      const landRight = !isOceanOrOOB(tx + 1, ty);
+      const landUp = !isOceanOrOOB(tx, ty - 1, override);
+      const landDown = !isOceanOrOOB(tx, ty + 1, override);
+      const landLeft = !isOceanOrOOB(tx - 1, ty, override);
+      const landRight = !isOceanOrOOB(tx + 1, ty, override);
 
-      if (!landUp && !landLeft && !isOceanOrOOB(tx - 1, ty - 1))
+      if (!landUp && !landLeft && !isOceanOrOOB(tx - 1, ty - 1, override))
         corners.push(`${prefix}_bottom_right`);
-      if (!landUp && !landRight && !isOceanOrOOB(tx + 1, ty - 1))
+      if (!landUp && !landRight && !isOceanOrOOB(tx + 1, ty - 1, override))
         corners.push(`${prefix}_bottom_left`);
-      if (!landDown && !landLeft && !isOceanOrOOB(tx - 1, ty + 1))
+      if (!landDown && !landLeft && !isOceanOrOOB(tx - 1, ty + 1, override))
         corners.push(`${prefix}_top_right`);
-      if (!landDown && !landRight && !isOceanOrOOB(tx + 1, ty + 1))
+      if (!landDown && !landRight && !isOceanOrOOB(tx + 1, ty + 1, override))
         corners.push(`${prefix}_top_left`);
 
       return corners;
@@ -375,7 +391,10 @@ export default function MapEditor() {
       ["grass_weed_3", 3],
       ["grass_weed_4", 3],
     ];
-    const totalWeight = grassVariants.reduce((sum, [, w]) => sum + (w as number), 0);
+    const totalWeight = grassVariants.reduce(
+      (sum, [, w]) => sum + (w as number),
+      0,
+    );
     const hash = ((tx * 2654435761) ^ (ty * 2246822519)) >>> 0;
     let roll = hash % totalWeight;
     for (const [name, weight] of grassVariants) {
@@ -386,29 +405,56 @@ export default function MapEditor() {
   }, []);
 
   const getTileSprites = useCallback(
-    (tx: number, ty: number) => {
-      const char = terrain[ty][tx];
+    (
+      tx: number,
+      ty: number,
+      charOverride?: string,
+      simpleGrass?: boolean,
+      previewOverride?: { x: number; y: number; char: string },
+    ) => {
+      const { terrain: t, width: w, height: h } = mapDataRef.current;
+      if (ty < 0 || ty >= h || tx < 0 || tx >= (t[ty]?.length || 0)) {
+        return ["border_water"];
+      }
+
+      // Priority: charOverride > previewOverride (if at matching pos) > actual terrain
+      let char = charOverride;
+      if (
+        !char &&
+        previewOverride &&
+        tx === previewOverride.x &&
+        ty === previewOverride.y
+      ) {
+        char = previewOverride.char;
+      }
+      if (!char) {
+        char = t[ty][tx];
+      }
+
       const sprites: string[] = [];
 
       if (char === "O" || char === "k" || char === "b" || char === "s") {
         sprites.push("border_water");
         const prefix =
           char === "b" ? "bluff" : char === "s" ? "beach" : "cliff";
-        const primary = pickOceanBorder(tx, ty, prefix);
+        const primary = pickOceanBorder(tx, ty, prefix, previewOverride);
         if (primary) sprites.push(primary);
-        const corners = pickOceanOuterCorners(tx, ty, prefix);
+        const corners = pickOceanOuterCorners(tx, ty, prefix, previewOverride);
         sprites.push(...corners);
       } else {
-        sprites.push(pickGrass(tx, ty));
-        if (char === "M") sprites.push(pickAutotile(tx, ty, "M", "mountain"));
-        else if (char === "T") sprites.push(pickAutotile(tx, ty, "T", "tree"));
-        else if (char === "R") sprites.push(pickAutotile(tx, ty, "R", "road"));
+        sprites.push(simpleGrass ? "grass" : pickGrass(tx, ty));
+        if (char === "M")
+          sprites.push(pickAutotile(tx, ty, "M", "mountain", previewOverride));
+        else if (char === "T")
+          sprites.push(pickAutotile(tx, ty, "T", "tree", previewOverride));
+        else if (char === "R")
+          sprites.push(pickAutotile(tx, ty, "R", "road", previewOverride));
         else if (char === "D")
-          sprites.push(pickAutotile(tx, ty, "D", "dirtroad"));
+          sprites.push(pickAutotile(tx, ty, "D", "dirtroad", previewOverride));
       }
       return sprites;
     },
-    [terrain, pickOceanBorder, pickOceanOuterCorners, pickAutotile, pickGrass],
+    [pickOceanBorder, pickOceanOuterCorners, pickAutotile, pickGrass],
   );
 
   const getExportChar = (x: number, y: number) => {
@@ -469,6 +515,12 @@ export default function MapEditor() {
     if (!files || files.length === 0) return;
     saveState();
 
+    let newW = mapData.width;
+    let newH = mapData.height;
+    let newTerrain = [...mapData.terrain.map((r) => [...r])];
+    let newBuildings = [...mapData.buildings];
+    let newUnits = [...mapData.units];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const text = await file.text();
@@ -479,38 +531,40 @@ export default function MapEditor() {
         .filter((l) => l && !l.startsWith("#"));
 
       if (file.name === "terrain.txt") {
-        const newTerrain = lines.map((line) => line.split(/\s+/));
+        newTerrain = lines.map((line) => line.split(/\s+/));
         if (newTerrain.length > 0) {
-          setHeight(newTerrain.length);
-          setWidth(newTerrain[0].length);
-          setTerrain(newTerrain);
+          newH = newTerrain.length;
+          newW = newTerrain[0].length;
         }
       } else if (file.name === "buildings.txt") {
-        setBuildings(
-          lines.map((line) => {
-            const parts = line.split(/\s+/);
-            return {
-              type: parts[0],
-              player: parseInt(parts[1], 10),
-              x: parseInt(parts[2], 10),
-              y: parseInt(parts[3], 10),
-            };
-          }),
-        );
+        newBuildings = lines.map((line) => {
+          const parts = line.split(/\s+/);
+          return {
+            type: parts[0],
+            player: parseInt(parts[1], 10),
+            x: parseInt(parts[2], 10),
+            y: parseInt(parts[3], 10),
+          };
+        });
       } else if (file.name === "units.txt") {
-        setUnits(
-          lines.map((line) => {
-            const parts = line.split(/\s+/);
-            return {
-              type: parts[0],
-              player: parseInt(parts[1], 10),
-              x: parseInt(parts[2], 10),
-              y: parseInt(parts[3], 10),
-            };
-          }),
-        );
+        newUnits = lines.map((line) => {
+          const parts = line.split(/\s+/);
+          return {
+            type: parts[0],
+            player: parseInt(parts[1], 10),
+            x: parseInt(parts[2], 10),
+            y: parseInt(parts[3], 10),
+          };
+        });
       }
     }
+    setMapData({
+      width: newW,
+      height: newH,
+      terrain: newTerrain,
+      buildings: newBuildings,
+      units: newUnits,
+    });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -525,6 +579,11 @@ export default function MapEditor() {
   const widthRef = useRef(width);
   const heightRef = useRef(height);
   const saveStateRef = useRef(saveState);
+  const toolCategoryRef = useRef(toolCategory);
+  const selectedTerrainRef = useRef(selectedTerrain);
+  const selectedBuildingRef = useRef(selectedBuilding);
+  const selectedUnitRef = useRef(selectedUnit);
+  const selectedPlayerRef = useRef(selectedPlayer);
 
   useEffect(() => {
     applyToolRef.current = applyTool;
@@ -538,10 +597,31 @@ export default function MapEditor() {
   useEffect(() => {
     saveStateRef.current = saveState;
   }, [saveState]);
+  useEffect(() => {
+    toolCategoryRef.current = toolCategory;
+  }, [toolCategory]);
+  useEffect(() => {
+    selectedTerrainRef.current = selectedTerrain;
+  }, [selectedTerrain]);
+  useEffect(() => {
+    selectedBuildingRef.current = selectedBuilding;
+  }, [selectedBuilding]);
+  useEffect(() => {
+    selectedUnitRef.current = selectedUnit;
+  }, [selectedUnit]);
+  useEffect(() => {
+    selectedPlayerRef.current = selectedPlayer;
+  }, [selectedPlayer]);
 
   useEffect(() => {
-    if (!containerRef.current || appRef.current) return;
+    if (!containerRef.current) return;
+    if (appRef.current) {
+      // If already exists, just trigger a redraw
+      setMapData((prev) => ({ ...prev }));
+      return;
+    }
 
+    let destroyed = false;
     const app = new Application();
     app
       .init({
@@ -551,6 +631,10 @@ export default function MapEditor() {
         roundPixels: true,
       })
       .then(async () => {
+        if (destroyed) {
+          app.destroy(true, { children: true });
+          return;
+        }
         appRef.current = app;
         if (containerRef.current)
           containerRef.current.appendChild(app.canvas as HTMLCanvasElement);
@@ -623,10 +707,12 @@ export default function MapEditor() {
           }
         });
 
-        const highlight = new Graphics();
-        highlight.setStrokeStyle({ color: 0xffffff, alpha: 0.8, width: 2 });
-        highlight.rect(0, 0, 32, 32);
-        highlight.stroke();
+        const highlight = new Container();
+        const highlightBox = new Graphics();
+        const highlightPreview = new Container();
+        highlight.addChild(highlightPreview);
+        highlight.addChild(highlightBox);
+        highlightPreview.alpha = 0.7;
         highlight.visible = false;
         vp.addChild(highlight);
 
@@ -637,13 +723,21 @@ export default function MapEditor() {
         vp.on("pointerdown", (e) => {
           if (e.button === 0) {
             // Left click
-            saveStateRef.current();
-            isDrawing = true;
             const pos = vp.toLocal(e.global);
             const tx = Math.floor(pos.x / 32);
             const ty = Math.floor(pos.y / 32);
-            lastDrawnPos = { x: tx, y: ty };
-            applyToolRef.current(tx, ty);
+
+            if (
+              tx >= 0 &&
+              tx < widthRef.current &&
+              ty >= 0 &&
+              ty < heightRef.current
+            ) {
+              saveStateRef.current();
+              isDrawing = true;
+              lastDrawnPos = { x: tx, y: ty };
+              applyToolRef.current(tx, ty);
+            }
           }
         });
 
@@ -665,19 +759,153 @@ export default function MapEditor() {
             ty >= 0 &&
             ty < heightRef.current
           ) {
+            setHoveredPos({ x: tx, y: ty });
             highlight.visible = true;
             highlight.x = tx * 32;
             highlight.y = ty * 32;
+
+            const isEdge =
+              tx === 0 ||
+              ty === 0 ||
+              tx === widthRef.current - 1 ||
+              ty === heightRef.current - 1;
+            let isIllegal = false;
+            const tool = toolCategoryRef.current;
+            if (tool === "terrain") {
+              if (isEdge && selectedTerrainRef.current !== "O")
+                isIllegal = true;
+            } else if (tool === "building" || tool === "unit") {
+              if (isEdge) isIllegal = true;
+            }
+
+            highlightBox.clear();
+            if (isIllegal) {
+              highlightBox.setStrokeStyle({
+                color: 0xff0000,
+                alpha: 0.8,
+                width: 2,
+              });
+              highlightBox.rect(0, 0, 32, 32);
+              highlightBox.moveTo(8, 8).lineTo(24, 24);
+              highlightBox.moveTo(24, 8).lineTo(8, 24);
+              highlightBox.stroke();
+            } else if (tool === "erase") {
+              highlightBox.setStrokeStyle({
+                color: 0xffffff,
+                alpha: 1.0,
+                width: 2,
+              });
+              highlightBox.rect(0, 0, 32, 32);
+              highlightBox.stroke();
+            }
+
+            // Preview logic
+            highlightPreview.removeChildren();
+            if (sheetRef.current) {
+              const sheet = sheetRef.current;
+              const addPreviewSprite = (
+                name: string,
+                px: number,
+                py: number,
+              ) => {
+                const tex = sheet.textures[name];
+                if (tex) {
+                  const s = new Sprite(tex);
+                  s.width = 32;
+                  s.height = 32;
+                  s.x = px * 32;
+                  s.y = py * 32;
+                  highlightPreview.addChild(s);
+                }
+              };
+
+              const addPreviewText = (
+                text: string,
+                size: number,
+                color: string,
+                align: "top" | "bottom" | "center" = "center",
+              ) => {
+                const t = new Text({
+                  text,
+                  style: new TextStyle({
+                    fontFamily: "monospace",
+                    fontSize: size,
+                    fill: color,
+                    fontWeight: "bold",
+                  }),
+                });
+                t.x = (32 - t.width) / 2;
+                if (align === "center") t.y = (32 - t.height) / 2;
+                else if (align === "top") t.y = 2;
+                else if (align === "bottom") t.y = 32 - t.height - 2;
+                highlightPreview.addChild(t);
+              };
+
+              if (tool === "terrain") {
+                const char = selectedTerrainRef.current;
+                const override = { x: tx, y: ty, char };
+                // Draw 3x3 area to show how neighbors update their borders!
+                for (let dy = -1; dy <= 1; dy++) {
+                  for (let dx = -1; dx <= 1; dx++) {
+                    const nx = tx + dx;
+                    const ny = ty + dy;
+                    if (
+                      nx >= 0 &&
+                      nx < widthRef.current &&
+                      ny >= 0 &&
+                      ny < heightRef.current
+                    ) {
+                      // simpleGrass: true for preview
+                      const sprites = getTileSprites(
+                        nx,
+                        ny,
+                        undefined,
+                        true,
+                        override,
+                      );
+                      for (const sp of sprites) addPreviewSprite(sp, dx, dy);
+                    }
+                  }
+                }
+              } else if (tool === "building") {
+                const bType = selectedBuildingRef.current;
+                addPreviewSprite(
+                  bType === "City"
+                    ? "city_idle"
+                    : bType === "Factory"
+                      ? "factory_idle"
+                      : "hq_bottom",
+                  0,
+                  0,
+                );
+                addPreviewText(
+                  `P${selectedPlayerRef.current}`,
+                  10,
+                  "#ffffff",
+                  "top",
+                );
+              } else if (tool === "unit") {
+                addPreviewText(
+                  selectedUnitRef.current.substring(0, 3).toUpperCase(),
+                  10,
+                  "#ff5555",
+                  "bottom",
+                );
+              }
+            }
+
             if (isDrawing && (tx !== lastDrawnPos.x || ty !== lastDrawnPos.y)) {
               lastDrawnPos = { x: tx, y: ty };
               applyToolRef.current(tx, ty);
             }
           } else {
+            setHoveredPos(null);
             highlight.visible = false;
           }
         });
 
         app.canvas.addEventListener("pointerout", () => {
+          setHoveredPos(null);
           highlight.visible = false;
         });
 
@@ -685,10 +913,11 @@ export default function MapEditor() {
         app.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
         // Trigger initial draw by slightly changing state reference or just letting useEffect handle it
-        setTerrain((prev) => [...prev]);
+        setMapData((prev) => ({ ...prev }));
       });
 
     return () => {
+      destroyed = true;
       if (appRef.current) {
         appRef.current.destroy(true, { children: true });
         appRef.current = null;
@@ -774,7 +1003,7 @@ export default function MapEditor() {
         }
       }
     }
-  }, [terrain, buildings, units, width, height, getTileSprites]);
+  }, [mapData, getTileSprites, hoveredPos]); // mapData covers all sub-properties
 
   return (
     <BlueprintContainer fullWidth>
