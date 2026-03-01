@@ -18,11 +18,21 @@ Use the following commit message format for check-ins:
 feat: <concise description>
 ```
 
+## Balance & Unit Stats
+
+All unit stats, terrain modifiers, and combat formulas live in [`BALANCE.md`](BALANCE.md).
+Contracts (`contracts/src/helpers/unit_stats.cairo`) must match those values.
+
 ## Stack
 
 - **Client:** Vite + React + TypeScript + PixiJS v8 + pixi-viewport
 - **Contracts:** Dojo/Cairo (TBD)
 - **Indexer:** Torii (TBD)
+
+## Contracts
+
+- Optimize for gas — this is an on-chain game and inefficient execution leads to higher transaction fees
+- Use the `/dojo` skill when modifying contracts for Dojo-specific patterns and best practices
 
 ## Conventions
 
