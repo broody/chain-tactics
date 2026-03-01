@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { BlueprintContainer } from "../components/BlueprintContainer";
 import { PixelPanel } from "../components/PixelPanel";
 import { PixelButton } from "../components/PixelButton";
+import { useToast } from "../components/Toast";
 import { terrainAtlas } from "../game/spritesheets/terrain";
 import {
   Application,
@@ -66,7 +67,16 @@ const loadSavedState = (): EditorState | null => {
 };
 
 export default function MapEditor() {
-  const savedState = loadSavedState();
+  const { toast } = useToast();
+  const [savedState] = useState(() => loadSavedState());
+
+  useEffect(() => {
+    if (savedState) {
+      toast("Restored map from auto-save", "info");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [width, setWidth] = useState(savedState?.width || 20);
   const [height, setHeight] = useState(savedState?.height || 20);
 
@@ -353,6 +363,28 @@ export default function MapEditor() {
     [isOceanOrOOB],
   );
 
+  const pickGrass = useCallback((tx: number, ty: number) => {
+    const grassVariants: [string, number][] = [
+      ["grass", 80],
+      ["grass_dirt_1", 2],
+      ["grass_dirt_2", 2],
+      ["grass_dirt_3", 2],
+      ["grass_dirt_4", 2],
+      ["grass_weed_1", 3],
+      ["grass_weed_2", 3],
+      ["grass_weed_3", 3],
+      ["grass_weed_4", 3],
+    ];
+    const totalWeight = grassVariants.reduce((sum, [, w]) => sum + (w as number), 0);
+    const hash = ((tx * 2654435761) ^ (ty * 2246822519)) >>> 0;
+    let roll = hash % totalWeight;
+    for (const [name, weight] of grassVariants) {
+      roll -= weight as number;
+      if (roll < 0) return name as string;
+    }
+    return "grass";
+  }, []);
+
   const getTileSprites = useCallback(
     (tx: number, ty: number) => {
       const char = terrain[ty][tx];
@@ -367,7 +399,7 @@ export default function MapEditor() {
         const corners = pickOceanOuterCorners(tx, ty, prefix);
         sprites.push(...corners);
       } else {
-        sprites.push("grass");
+        sprites.push(pickGrass(tx, ty));
         if (char === "M") sprites.push(pickAutotile(tx, ty, "M", "mountain"));
         else if (char === "T") sprites.push(pickAutotile(tx, ty, "T", "tree"));
         else if (char === "R") sprites.push(pickAutotile(tx, ty, "R", "road"));
@@ -376,7 +408,7 @@ export default function MapEditor() {
       }
       return sprites;
     },
-    [terrain, pickOceanBorder, pickOceanOuterCorners, pickAutotile],
+    [terrain, pickOceanBorder, pickOceanOuterCorners, pickAutotile, pickGrass],
   );
 
   const getExportChar = (x: number, y: number) => {
@@ -429,6 +461,7 @@ export default function MapEditor() {
     download("terrain.txt", terrainText);
     if (buildingsText) download("buildings.txt", buildingsText);
     if (unitsText) download("units.txt", unitsText);
+    toast("Map files downloaded", "success");
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -744,7 +777,7 @@ export default function MapEditor() {
   }, [terrain, buildings, units, width, height, getTileSprites]);
 
   return (
-    <BlueprintContainer>
+    <BlueprintContainer fullWidth>
       <div className="flex w-full h-full gap-4 text-white font-mono">
         {/* PixiJS Canvas Container */}
         <PixelPanel
