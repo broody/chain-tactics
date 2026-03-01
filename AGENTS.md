@@ -29,6 +29,11 @@ Contracts (`contracts/src/helpers/unit_stats.cairo`) must match those values.
 - **Contracts:** Dojo/Cairo (TBD)
 - **Indexer:** Torii (TBD)
 
+## Contracts
+
+- Optimize for gas — this is an on-chain game and inefficient execution leads to higher transaction fees
+- Use the `/dojo` skill when modifying contracts for Dojo-specific patterns and best practices
+
 ## Conventions
 
 - Use `type` imports for type-only symbols (`import type { Foo }`)
