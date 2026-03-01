@@ -54,16 +54,18 @@ Player 1 always goes first. The first player to create the game picks their slot
 
 ### Terrain Types
 
-| Terrain | Char | Movement Cost | Defense Bonus | Notes |
-|---------|------|--------------|---------------|-------|
-| **Grass** | `.` | 1 | 0 | Default (not stored) |
-| **Mountain** | `M` | 2 | +2 | Infantry only |
-| **City** | `C` | 1 | +1 | Building: capturable, generates income |
-| **Factory** | `F` | 1 | +1 | Building: capturable, produces units |
-| **HQ** | `H` | 1 | +2 | Building: lose if captured |
-| **Road** | `R` | 1 | 0 | Tank and Ranger get +2 temporary move when starting here |
-| **Tree** | `T` | 1 | +1 | |
-| **DirtRoad** | `D` | 1 | 0 | Tank and Ranger get +2 temporary move when starting here |
+| Terrain | Char | Notes |
+|---------|------|-------|
+| **Grass** | `.` | Default (not stored) |
+| **Mountain** | `M` | Infantry only |
+| **City** | `C` | Building: capturable, generates income |
+| **Factory** | `F` | Building: capturable, produces units |
+| **HQ** | `H` | Building: lose if captured |
+| **Road** | `R` | Tank and Ranger get +2 temporary move when starting here |
+| **Tree** | `T` | |
+| **DirtRoad** | `D` | Tank and Ranger get +2 temporary move when starting here |
+
+Movement costs, defense bonuses, and evasion values are in [`BALANCE.md`](BALANCE.md).
 
 ### Buildings
 
@@ -77,13 +79,11 @@ Building ownership is defined in the map template and copied into each game inst
 
 ## Units
 
-Three unit types with asymmetric combat roles (designed to expand with additional unit classes like air and navy):
+Three unit types with asymmetric combat roles (designed to expand with additional unit classes like air and navy). See [`BALANCE.md`](BALANCE.md) for all stats, terrain modifiers, and combat formulas.
 
-| Unit | HP | Attack | Move | Range | Cost | Special |
-|------|-----|--------|------|-------|------|---------|
-| **Infantry** | 3 | 2 | 4 | 1 | 1 | Captures buildings, traverses mountains |
-| **Tank** | 5 | 4 | 2 | 1 | 4 | Raw combat power |
-| **Ranger** | 3 | 3 | 3 | 2–3 | 2 | Cannot attack adjacent (min range 2), cannot attack after moving, can capture buildings |
+- **Infantry** — Cheap, captures buildings, traverses mountains
+- **Tank** — Heavy combat power, expensive
+- **Ranger** — Ranged attacker (min range 2), cannot attack after moving, can capture buildings
 
 ### Combat Resolution
 
@@ -102,33 +102,6 @@ Combat includes bounded hit chance to reduce deterministic outcomes while preser
 - Roll once per attack and once per counterattack (separate rolls). Counterattacks use the same formula — `terrain_evasion` is the **attacker's terrain** (since the attacker is now the target), `terrain_defense` is the attacker's terrain defense, and `move_penalty` is 0 (the defender did not move this turn). The defender's only inherent edge is skipping the move penalty.
 - If hit: apply normal combat damage formula
 - If miss: **graze** — deals 1 damage, but only if `hit_damage >= 2`, where `hit_damage = max(attack_power - terrain_defense, 1)`. If `hit_damage` is 1 (i.e., terrain defense >= attack power), a miss deals 0 (true whiff). This avoids zero-damage feel-bad streaks while keeping heavily fortified positions meaningful.
-
-#### Base Accuracy by Unit
-
-| Unit | Base Accuracy |
-|------|---------------|
-| **Infantry** | 90 |
-| **Tank** | 85 |
-| **Ranger** | 88 |
-
-#### Terrain Evasion
-
-| Terrain | Evasion |
-|---------|---------|
-| **Grass** | 0 |
-| **Road** | 0 |
-| **DirtRoad** | 0 |
-| **Tree** | 5 |
-| **City** | 8 |
-| **Factory** | 8 |
-| **HQ** | 10 |
-| **Mountain** | 12 |
-
-#### Context Modifiers
-
-- `move_penalty`: 5 if the attacker moved this turn, otherwise 0
-- `range_penalty`: 0 by default
-- Ranger only: `range_penalty = 5` when attacking at range 3
 
 #### Randomness Source
 

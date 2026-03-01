@@ -18,6 +18,11 @@ Use the following commit message format for check-ins:
 feat: <concise description>
 ```
 
+## Balance & Unit Stats
+
+All unit stats, terrain modifiers, and combat formulas live in [`BALANCE.md`](BALANCE.md).
+Contracts (`contracts/src/helpers/unit_stats.cairo`) must match those values.
+
 ## Stack
 
 - **Client:** Vite + React + TypeScript + PixiJS v8 + pixi-viewport
